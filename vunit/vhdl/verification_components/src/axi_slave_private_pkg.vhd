@@ -47,6 +47,8 @@ package axi_slave_private_pkg is
                    max_id : natural;
                    data : std_logic_vector);
     impure function get_actor return actor_t;
+    impure function get_logger return logger_t;
+    impure function fail_on_unexpected_msg_type return boolean;
 
     procedure set_address_fifo_depth(depth : positive);
     procedure set_write_response_fifo_depth(depth : positive);
@@ -163,6 +165,16 @@ package body axi_slave_private_pkg is
     impure function get_actor return actor_t is
     begin
       return p_axi_slave.p_actor;
+    end;
+
+    impure function get_logger return logger_t is
+    begin
+      return p_axi_slave.p_logger;
+    end;
+
+    impure function fail_on_unexpected_msg_type return boolean is
+    begin
+      return p_axi_slave.p_fail_on_unexpected_msg_type;
     end;
 
     procedure set_address_fifo_depth(depth : positive) is
@@ -424,7 +436,7 @@ package body axi_slave_private_pkg is
 
     procedure fail(msg : string) is
     begin
-      failure(p_axi_slave.p_logger, msg);
+      check_failed(p_axi_slave.p_checker, msg, failure);
     end;
 
     procedure check_4kbyte_boundary(burst : axi_burst_t) is
@@ -503,6 +515,8 @@ package body axi_slave_private_pkg is
       receive(net, self.get_actor, request_msg);
       msg_type := message_type(request_msg);
 
+      handle_sync_message(net, msg_type, request_msg);
+
       if msg_type = axi_slave_set_address_fifo_depth_msg then
         self.set_address_fifo_depth(pop(request_msg));
         acknowledge(net, request_msg, true);
@@ -548,8 +562,8 @@ package body axi_slave_private_pkg is
       elsif msg_type = axi_slave_enable_well_behaved_check_msg then
         self.enable_well_behaved_check;
         acknowledge(net, request_msg, true);
-      else
-        unexpected_msg_type(msg_type);
+      elsif self.fail_on_unexpected_msg_type then
+        unexpected_msg_type(msg_type, self.get_logger);
       end if;
 
       delete(request_msg);

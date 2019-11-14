@@ -9,7 +9,9 @@ use ieee.std_logic_1164.all;
 
 use work.queue_pkg.all;
 use work.logger_pkg.all;
+use work.checker_pkg.all;
 use work.memory_pkg.all;
+use work.sync_pkg.all;
 context work.com_context;
 use work.axi_statistics_pkg.all;
 
@@ -29,9 +31,12 @@ package axi_slave_pkg is
     p_actor : actor_t;
     p_memory : memory_t;
     p_logger : logger_t;
+    p_checker : checker_t;
+    p_fail_on_unexpected_msg_type : boolean;
   end record;
 
   constant axi_slave_logger : logger_t := get_logger("vunit_lib:axi_slave_pkg");
+  constant axi_slave_checker : checker_t := new_checker(axi_slave_logger);
   impure function new_axi_slave(memory : memory_t;
                                 address_fifo_depth : positive := 1;
                                 write_response_fifo_depth : positive := 1;
@@ -41,7 +46,12 @@ package axi_slave_pkg is
                                 write_response_stall_probability : probability_t := 0.0;
                                 min_response_latency : delay_length := 0 ns;
                                 max_response_latency : delay_length := 0 ns;
-                                logger : logger_t := axi_slave_logger) return axi_slave_t;
+                                logger : logger_t := axi_slave_logger;
+                                actor : actor_t := null_actor;
+                                checker : checker_t := null_checker;
+                                fail_on_unexpected_msg_type : boolean := true) return axi_slave_t;
+
+  impure function as_sync(axi_slave : axi_slave_t) return sync_handle_t;
 
   -- Get the logger used by the axi_slave
   function get_logger(axi_slave : axi_slave_t) return logger_t;
@@ -145,9 +155,26 @@ package body axi_slave_pkg is
                                 write_response_stall_probability : probability_t := 0.0;
                                 min_response_latency : delay_length := 0 ns;
                                 max_response_latency : delay_length := 0 ns;
-                                logger : logger_t := axi_slave_logger) return axi_slave_t is
+                                logger : logger_t := axi_slave_logger;
+                                actor : actor_t := null_actor;
+                                checker : checker_t := null_checker;
+                                fail_on_unexpected_msg_type : boolean := true) return axi_slave_t is
+    variable p_actor : actor_t;
+    variable p_checker : checker_t;
   begin
-    return (p_actor => new_actor,
+    p_actor := actor when actor /= null_actor else new_actor;
+
+    if checker = null_checker then
+      if logger = axi_slave_logger then
+        p_checker := axi_slave_checker;
+      else
+        p_checker := new_checker(logger);
+      end if;
+    else
+      p_checker := checker;
+    end if;
+
+    return (p_actor => p_actor,
             p_initial_address_fifo_depth => address_fifo_depth,
             p_initial_write_response_fifo_depth => write_response_fifo_depth,
             p_initial_check_4kbyte_boundary => check_4kbyte_boundary,
@@ -157,7 +184,14 @@ package body axi_slave_pkg is
             p_initial_min_response_latency => min_response_latency,
             p_initial_max_response_latency => max_response_latency,
             p_memory => to_vc_interface(memory, logger),
-            p_logger => logger);
+            p_logger => logger,
+            p_checker => p_checker,
+            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
+  end;
+
+  impure function as_sync(axi_slave : axi_slave_t) return sync_handle_t is
+  begin
+    return axi_slave.p_actor;
   end;
 
   function get_logger(axi_slave : axi_slave_t) return logger_t is
