@@ -55,6 +55,7 @@ architecture a of axi_stream_protocol_checker is
   constant rule20_checker : checker_t := new_checker(get_name(protocol_checker.p_logger) & ":rule 20");
   constant rule21_checker : checker_t := new_checker(get_name(protocol_checker.p_logger) & ":rule 21");
   constant rule22_checker : checker_t := new_checker(get_name(protocol_checker.p_logger) & ":rule 22");
+  constant rule23_checker : checker_t := new_checker(get_name(protocol_checker.p_logger) & ":rule 23");
 
   signal handshake_is_not_x : std_logic;
   signal enable_rule1_check : std_logic;
@@ -66,9 +67,10 @@ architecture a of axi_stream_protocol_checker is
   signal enable_rule15_check : std_logic;
   signal rule20_check_value : std_logic;
 
-  signal areset_n_d  : std_logic := '0';
+  signal areset_n_d  : std_logic := '1';
+  signal areset      : std_logic;
   signal areset_rose : std_logic;
-  signal not_tvalid  : std_logic;
+  signal tvalid_low, tvalid_not_high  : std_logic;
 begin
   handshake_is_not_x <= '1' when not is_x(tvalid) and not is_x(tready) else '0';
 
@@ -253,9 +255,14 @@ begin
       areset_n_d <= areset_n;
     end if;
   end process;
-  areset_rose <= areset_n and not areset_n_d;
-  not_tvalid   <= not tvalid;
-  check_implication(rule22_checker, aclk, areset_n, areset_rose, not_tvalid, result("for tvalid de-asserted after reset release"));
+  areset_rose <= to_x01(areset_n and not areset_n_d);
+  tvalid_low  <= not tvalid;
+  check_implication(rule22_checker, aclk, areset_n, areset_rose, tvalid_low, result("for tvalid de-asserted after reset release"));
+
+  -- Check that tvalid stops being asserted asynchronously when areset_n is asserted
+  areset <= not areset_n;
+  tvalid_not_high <= '1' when to_x01(tvalid) /= '1' else '0';
+  check_implication(rule23_checker, aclk, areset, areset, tvalid_not_high, result("for tvalid de-asserted asynchronously when areset_n is asserted"));
 
   -- for * being DATA, KEEP, STRB, ID, DEST or USER
   -- AXI4STREAM_ERRM_T*_TIEOFF T* must be stable while *_WIDTH has been set to zero

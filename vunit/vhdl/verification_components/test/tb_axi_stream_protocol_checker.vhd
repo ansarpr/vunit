@@ -46,7 +46,7 @@ architecture a of tb_axi_stream_protocol_checker is
   );
   constant meta_values      : std_logic_vector(1 to 5)      := "-XWZU";
   constant valid_values     : std_logic_vector(1 to 4)      := "01LH";
-
+  constant clk_period   : time := 10 ns;
 begin
 
   main : process
@@ -378,14 +378,12 @@ begin
     elsif run("Test passing check of that tready must not be unknown unless in reset") then
       wait until rising_edge(aclk);
       areset_n <= '0';
-      tvalid   <= '1';
       for i in meta_values'range loop
         tready <= meta_values(i);
         wait until rising_edge(aclk);
       end loop;
       areset_n <= '1';
-      tvalid   <= '0';
-      tready <= valid_values(1);
+      tready   <= valid_values(1);
       wait until rising_edge(aclk);
       tvalid   <= '1';
       for i in valid_values'range loop
@@ -590,6 +588,45 @@ begin
 
       unmock(rule_logger);
 
+    elsif run("Test passing check of that tvalid must go low immediately on assert") then
+      areset_n <= '1';
+      tvalid   <= '1';
+      tready   <= '1';
+      wait until rising_edge(aclk);
+      wait for 0 ns;
+      areset_n <= '0';
+      wait for clk_period * 9 / 10;
+      tvalid   <= '0';
+      wait until rising_edge(aclk);
+      areset_n <= '1';
+      wait until rising_edge(aclk);
+      tvalid   <= '1';
+      wait until rising_edge(aclk);
+
+    elsif run("Test failing check of that tvalid must go low immediately on assert") then
+      rule_logger := get_logger(get_name(logger) & ":rule 23");
+      mock(rule_logger);
+
+      areset_n <= '1';
+      tvalid   <= '1';
+      tready   <= '1';
+      wait until rising_edge(aclk);
+      wait for 0 ns;
+      areset_n <= '0';
+      wait until rising_edge(aclk);
+      tvalid   <= '0';
+      areset_n <= '1';
+      wait until rising_edge(aclk);
+      tvalid   <= '1';
+      wait until rising_edge(aclk);
+
+      check_only_log(
+        rule_logger,
+        "Implication check failed for tvalid de-asserted asynchronously when areset_n is asserted",
+        error);
+
+      unmock(rule_logger);
+
     end if;
 
     test_runner_cleanup(runner);
@@ -615,5 +652,5 @@ begin
       tuser    => tuser
       );
 
-  aclk <= not aclk after 5 ns;
+  aclk <= not aclk after clk_period / 2;
 end architecture;
