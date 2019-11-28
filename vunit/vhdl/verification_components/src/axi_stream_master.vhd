@@ -16,71 +16,72 @@ use work.sync_pkg.all;
 
 entity axi_stream_master is
   generic (
-    master                 : axi_stream_master_t;
-    drive_invalid          : boolean   := true;
-    drive_invalid_val      : std_logic := 'X';
-    drive_invalid_val_user : std_logic := '0'
-  );
+    master : axi_stream_master_t
+    );
   port (
-    aclk         : in  std_logic;
-    areset_n     : in  std_logic                                          := '1';
-    tvalid       : out std_logic                                          := '0';
-    tready       : in  std_logic                                          := '1';
-    tdata        : out std_logic_vector(data_length(master)-1 downto 0)   := (others => '0');
-    tlast        : out std_logic                                          := '0';
-    tkeep        : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
-    tstrb        : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
-    tid          : out std_logic_vector(id_length(master)-1 downto 0)     := (others => '0');
-    tdest        : out std_logic_vector(dest_length(master)-1 downto 0)   := (others => '0');
-    tuser        : out std_logic_vector(user_length(master)-1 downto 0)   := (others => '0')
-  );
+    aclk     : in  std_logic;
+    areset_n : in  std_logic                                          := '1';
+    tvalid   : out std_logic                                          := '0';
+    tready   : in  std_logic                                          := '1';
+    tdata    : out std_logic_vector(data_length(master)-1 downto 0)   := (others => '0');
+    tlast    : out std_logic                                          := '0';
+    tkeep    : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
+    tstrb    : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
+    tid      : out std_logic_vector(id_length(master)-1 downto 0)     := (others => '0');
+    tdest    : out std_logic_vector(dest_length(master)-1 downto 0)   := (others => '0');
+    tuser    : out std_logic_vector(user_length(master)-1 downto 0)   := (others => '0')
+    );
 end entity;
 
 architecture a of axi_stream_master is
-
-  constant notify_request_msg      : msg_type_t := new_msg_type("notify request");
-  constant message_queue           : queue_t    := new_queue;
-  signal   notify_bus_process_done : std_logic  := '0';
-
+  constant message_queue, transaction_token_queue : queue_t    := new_queue;
+  signal notification : boolean := false;
 begin
 
   main : process
     variable request_msg : msg_t;
-    variable notify_msg  : msg_t;
     variable msg_type    : msg_type_t;
+    
+    procedure wait_on_pending_transactions is
+    begin
+      if not is_empty(transaction_token_queue) then
+        wait on notification until is_empty(transaction_token_queue);
+      end if;
+    end;
   begin
     receive(net, master.p_actor, request_msg);
     msg_type := message_type(request_msg);
 
     if msg_type = stream_push_msg or msg_type = push_axi_stream_msg then
       push(message_queue, request_msg);
+      push(transaction_token_queue, true);
     elsif msg_type = wait_for_time_msg then
-      push(message_queue, request_msg);
+      wait_on_pending_transactions;
+      handle_wait_for_time(net, msg_type, request_msg);
     elsif msg_type = wait_until_idle_msg then
-      notify_msg := new_msg(notify_request_msg);
-      push(message_queue, notify_msg);
-      wait on notify_bus_process_done until is_empty(message_queue);
+      wait_on_pending_transactions;
       handle_wait_until_idle(net, msg_type, request_msg);
-    else
-      unexpected_msg_type(msg_type);
+    elsif master.p_fail_on_unexpected_msg_type then
+      unexpected_msg_type(msg_type, master.p_logger);
     end if;
   end process;
 
   bus_process : process
     variable msg : msg_t;
     variable msg_type : msg_type_t;
+    variable transaction_token : boolean;
   begin
-    if drive_invalid then
-      tdata <= (others => drive_invalid_val);
-      tkeep <= (others => drive_invalid_val);
-      tstrb <= (others => drive_invalid_val);
-      tid   <= (others => drive_invalid_val);
-      tdest <= (others => drive_invalid_val);
-      tuser <= (others => drive_invalid_val_user);
+    if master.p_drive_invalid then
+      tdata <= (others => master.p_drive_invalid_val);
+      tkeep <= (others => master.p_drive_invalid_val);
+      tstrb <= (others => master.p_drive_invalid_val);
+      tid   <= (others => master.p_drive_invalid_val);
+      tdest <= (others => master.p_drive_invalid_val);
+      tuser <= (others => master.p_drive_invalid_val_user);
     end if;
 
     -- Wait for messages to arrive on the queue, posted by the process above
-    wait until rising_edge(aclk) and (not is_empty(message_queue) or areset_n = '0');
+    wait until (rising_edge(aclk) and not is_empty(message_queue)) or areset_n = '0';
 
     if (areset_n = '0') then
       tvalid <= '0';
@@ -89,13 +90,7 @@ begin
         msg := pop(message_queue);
         msg_type := message_type(msg);
 
-        if msg_type = wait_for_time_msg then
-          handle_sync_message(net, msg_type, msg);
-          -- Re-align with the clock when a wait for time message was handled, because this breaks edge alignment.
-          wait until rising_edge(aclk);
-        elsif msg_type = notify_request_msg then
-          -- Ignore this message, but expect it
-        elsif msg_type = stream_push_msg or msg_type = push_axi_stream_msg then
+        if msg_type = stream_push_msg or msg_type = push_axi_stream_msg then
           tvalid <= '1';
           tdata <= pop_std_ulogic_vector(msg);
           if msg_type = push_axi_stream_msg then
@@ -117,19 +112,19 @@ begin
             tdest <= (others => '0');
             tuser <= (others => '0');
           end if;
-          wait until ((tvalid and tready) = '1' or areset_n = '0') and rising_edge(aclk);
+          wait until (rising_edge(aclk) and (tvalid and tready) = '1') or areset_n = '0';
           tvalid <= '0';
           tlast <= '0';
-        else
-          unexpected_msg_type(msg_type);
+          
+          transaction_token := pop(transaction_token_queue);
+          notification <= not notification;
+          wait on notification;
+        elsif master.p_fail_on_unexpected_msg_type then
+          unexpected_msg_type(msg_type, master.p_logger);
         end if;
 
         delete(msg);
       end loop;
-
-      notify_bus_process_done <= '1';
-      wait until notify_bus_process_done = '1';
-      notify_bus_process_done <= '0';
     end if;
   end process;
 

@@ -94,14 +94,19 @@ package axi_stream_pkg is
   );
 
   type axi_stream_master_t is record
-    p_actor            : actor_t;
-    p_data_length      : natural;
-    p_id_length        : natural;
-    p_dest_length      : natural;
-    p_user_length      : natural;
-    p_logger           : logger_t;
-    p_monitor          : axi_stream_monitor_t;
-    p_protocol_checker : axi_stream_protocol_checker_t;
+    p_actor                       : actor_t;
+    p_data_length                 : natural;
+    p_id_length                   : natural;
+    p_dest_length                 : natural;
+    p_user_length                 : natural;
+    p_drive_invalid               : boolean;
+    p_drive_invalid_val           : std_logic;
+    p_drive_invalid_val_user      : std_logic;
+    p_logger                      : logger_t;
+    p_checker                     : checker_t;
+    p_fail_on_unexpected_msg_type : boolean;
+    p_monitor                     : axi_stream_monitor_t;
+    p_protocol_checker            : axi_stream_protocol_checker_t;
   end record;
 
   type axi_stream_slave_t is record
@@ -119,15 +124,21 @@ package axi_stream_pkg is
   constant axi_stream_checker : checker_t := new_checker(axi_stream_logger);
 
   impure function new_axi_stream_master(
-    data_length      : natural;
-    id_length        : natural                       := 0;
-    dest_length      : natural                       := 0;
-    user_length      : natural                       := 0;
-    logger           : logger_t                      := axi_stream_logger;
-    actor            : actor_t                       := null_actor;
-    monitor          : axi_stream_monitor_t          := null_axi_stream_monitor;
-    protocol_checker : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
-  ) return axi_stream_master_t;
+    data_length                 : natural;
+    id_length                   : natural                       := 0;
+    dest_length                 : natural                       := 0;
+    user_length                 : natural                       := 0;
+    drive_invalid               : boolean                       := true;
+    drive_invalid_val           : std_logic                     := 'X';
+    drive_invalid_val_user      : std_logic                     := '0';
+    logger                      : logger_t                      := axi_stream_logger;
+    actor                       : actor_t                       := null_actor;
+    checker                     : checker_t                     := null_checker;
+    fail_on_unexpected_msg_type : boolean                       := true;
+    monitor                     : axi_stream_monitor_t          := null_axi_stream_monitor;
+    protocol_checker            : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
+    ) return axi_stream_master_t;
+
 
   impure function new_axi_stream_slave(
     data_length      : natural;
@@ -339,16 +350,22 @@ package body axi_stream_pkg is
   end;
 
   impure function new_axi_stream_master(
-    data_length      : natural;
-    id_length        : natural                       := 0;
-    dest_length      : natural                       := 0;
-    user_length      : natural                       := 0;
-    logger           : logger_t                      := axi_stream_logger;
-    actor            : actor_t                       := null_actor;
-    monitor          : axi_stream_monitor_t          := null_axi_stream_monitor;
-    protocol_checker : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
-  ) return axi_stream_master_t is
+    data_length                 : natural;
+    id_length                   : natural                       := 0;
+    dest_length                 : natural                       := 0;
+    user_length                 : natural                       := 0;
+    drive_invalid               : boolean                       := true;
+    drive_invalid_val           : std_logic                     := 'X';
+    drive_invalid_val_user      : std_logic                     := '0';
+    logger                      : logger_t                      := axi_stream_logger;
+    actor                       : actor_t                       := null_actor;
+    checker                     : checker_t                     := null_checker;
+    fail_on_unexpected_msg_type : boolean                       := true;
+    monitor                     : axi_stream_monitor_t          := null_axi_stream_monitor;
+    protocol_checker            : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
+    ) return axi_stream_master_t is
     variable p_actor            : actor_t;
+    variable p_checker          : checker_t;
     variable p_monitor          : axi_stream_monitor_t;
     variable p_protocol_checker : axi_stream_protocol_checker_t;
   begin
@@ -356,14 +373,29 @@ package body axi_stream_pkg is
     p_actor            := actor when actor /= null_actor else new_actor;
     p_protocol_checker := get_valid_protocol_checker(data_length, id_length, dest_length, user_length, logger, actor, protocol_checker, "master");
 
-    return (p_actor      => p_actor,
-      p_data_length      => data_length,
-      p_id_length        => id_length,
-      p_dest_length      => dest_length,
-      p_user_length      => user_length,
-      p_logger           => logger,
-      p_monitor          => p_monitor,
-      p_protocol_checker => p_protocol_checker);
+    if checker = null_checker then
+      if logger = axi_stream_logger then
+        p_checker := axi_stream_checker;
+      else
+        p_checker := new_checker(logger);
+      end if;
+    else
+      p_checker := checker;
+    end if;
+
+    return (p_actor                       => p_actor,
+            p_data_length                 => data_length,
+            p_id_length                   => id_length,
+            p_dest_length                 => dest_length,
+            p_user_length                 => user_length,
+            p_drive_invalid               => drive_invalid,
+            p_drive_invalid_val           => drive_invalid_val,
+            p_drive_invalid_val_user      => drive_invalid_val_user,
+            p_logger                      => logger,
+            p_checker                     => p_checker,
+            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type,
+            p_monitor                     => p_monitor,
+            p_protocol_checker            => p_protocol_checker);
   end;
 
   impure function new_axi_stream_slave(
