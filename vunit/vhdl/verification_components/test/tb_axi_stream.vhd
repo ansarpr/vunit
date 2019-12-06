@@ -426,6 +426,16 @@ begin
 
       check_equal(now, timestamp + 20 ns, " transaction time incorrect");
 
+    elsif run("test that the master waits on its subcomponents to be idle") then
+      timestamp := now;
+      wait_for_time(net, as_sync(master_axi_stream.p_monitor), 1 ns);
+      wait_until_idle(net, as_sync(master_axi_stream));
+      check_equal(now, timestamp + 1 ns);
+    elsif run("test that the slave waits on its subcomponents to be idle") then
+      timestamp := now;
+      wait_for_time(net, as_sync(slave_axi_stream.p_monitor), 1 ns);
+      wait_until_idle(net, as_sync(slave_axi_stream));
+      check_equal(now, timestamp + 1 ns);
     end if;
     test_runner_cleanup(runner);
   end process;

@@ -153,7 +153,11 @@ ComplianceTest(lib, "axi_stream_slave", "axi_stream_pkg").add_vhdl_testbench(
     join(root, "compliance_test"),
     join(root, ".vc", "tb_axi_stream_slave_compliance_template.vhd"),
 )
-
+ComplianceTest(lib, "axi_stream_monitor", "axi_stream_pkg").add_vhdl_testbench(
+    test_lib,
+    join(root, "compliance_test"),
+    join(root, ".vc", "tb_axi_stream_monitor_compliance_template.vhd"),
+)
 ui.set_compile_option("rivierapro.vcom_flags", ["-dbg"])
 
 ui.main()

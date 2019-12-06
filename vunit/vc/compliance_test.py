@@ -11,6 +11,7 @@ Module for generating a compliance test for a VUnit verification component
 import argparse
 import sys
 import re
+import logging
 from os import makedirs
 from os.path import exists, join, dirname, isdir
 from re import subn, MULTILINE, IGNORECASE, DOTALL
@@ -21,6 +22,8 @@ from vunit.vhdl_parser import (
     find_closing_delimiter,
     remove_comments,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ComplianceTest(object):
@@ -35,20 +38,28 @@ class ComplianceTest(object):
         try:
             self.vc_facade = vc_lib.get_entity(vc_name)
         except KeyError:
-            raise RuntimeError("Failed to find VC %s" % vc_name)
+            LOGGER.error("Failed to find VC {}".format(vc_name))
+            sys.exit(1)
 
         self.vc_code = self._validate_vc(self.vc_facade.source_file.name)
+        if not self.vc_code:
+            sys.exit(1)
+
         self.vc_entity = self.vc_code.entities[0]
         self.vc_handle_t = self.vc_entity.generics[0].subtype_indication.type_mark
 
         try:
             self.vci_facade = vc_lib.package(vci_name)
         except KeyError:
-            raise RuntimeError("Failed to find VCI %s" % vci_name)
+            LOGGER.error("Failed to find VCI {}".format(vci_name))
+            sys.exit(1)
 
         _, self.vc_constructor = self._validate_vci(
             self.vci_facade.source_file.name, self.vc_handle_t
         )
+
+        if not self.vc_constructor:
+            sys.exit(1)
 
     @classmethod
     def _validate_vc(cls, vc_source_file_name):
@@ -58,14 +69,21 @@ class ComplianceTest(object):
             vc_code = VHDLDesignFile.parse(fptr.read())
 
             if len(vc_code.entities) != 1:
-                raise RuntimeError(
-                    "%s must contain a single VC entity" % vc_source_file_name
+                LOGGER.error(
+                    "{} must contain a single VC entity".format(vc_source_file_name)
                 )
+                return None
 
             vc_entity = vc_code.entities[0]
 
-            if len(vc_entity.generics) != 1:
-                raise RuntimeError("%s must have a single generic")
+            if not (
+                (len(vc_entity.generics) == 1)
+                and (len(vc_entity.generics[0].identifier_list) == 1)
+            ):
+                LOGGER.error(
+                    "{} must have a single generic".format(vc_entity.identifier)
+                )
+                return None
 
             return vc_code
 
@@ -73,28 +91,28 @@ class ComplianceTest(object):
     def _validate_vci(cls, vci_source_file_name, vc_handle_t):
         """Validates the existence and contents of the verification component interface."""
 
-        def create_error_messages(required_parameter_types):
-            error_messages = [
+        def create_messages(required_parameter_types, expected_default_value):
+            messages = [
                 "Failed to find constructor function starting with new_",
                 "Found constructor function starting with new_ but not with the correct return type %s"
                 % (vc_handle_t),
             ]
 
             for parameter_name, parameter_type in required_parameter_types.items():
-                error_messages.append(
-                    "Found constructor function but %s parameter is missing"
+                messages.append(
+                    "Found constructor function but the %s parameter is missing"
                     % (parameter_name)
                 )
-                error_messages.append(
-                    "Found constructor function but %s parameter is not of type %s"
+                messages.append(
+                    "Found constructor function but the %s parameter is not of type %s"
                     % (parameter_name, parameter_type)
                 )
-                error_messages.append(
-                    "Found constructor function but %s parameter is missing a default value"
-                    % (parameter_name)
+                messages.append(
+                    "Found constructor function but %s is the only allowed default value for the %s parameter"
+                    % (expected_default_value[parameter_name], parameter_name)
                 )
 
-            return error_messages
+            return messages
 
         def get_constructor(code):
             required_parameter_types = dict(
@@ -104,7 +122,14 @@ class ComplianceTest(object):
                 fail_on_unexpected_msg_type="boolean",
             )
 
-            error_messages = create_error_messages(required_parameter_types)
+            expected_default_value = dict(
+                logger=None,
+                actor="null_actor",
+                checker="null_checker",
+                fail_on_unexpected_msg_type=None,
+            )
+
+            messages = create_messages(required_parameter_types, expected_default_value)
             message_idx = 0
             for func in VHDLFunctionSpecification.find(code):
                 if not func.identifier.startswith("new_"):
@@ -121,6 +146,7 @@ class ComplianceTest(object):
                         parameters[identifier] = parameter
 
                 step = 3
+                parameters_missing_default_value = set()
                 for parameter_name, parameter_type in required_parameter_types.items():
                     if parameter_name not in parameters:
                         break
@@ -136,26 +162,44 @@ class ComplianceTest(object):
                     step += 1
 
                     if not parameters[parameter_name].init_value:
+                        parameters_missing_default_value.add(parameter_name)
+                    elif expected_default_value[parameter_name] and (
+                        parameters[parameter_name].init_value
+                        != expected_default_value[parameter_name]
+                    ):
                         break
                     message_idx = max(message_idx, step)
                     step += 1
 
-                if step == len(error_messages) + 1:
-                    return func, None
+                if step == len(messages) + 1:
+                    return func, parameters_missing_default_value, None
 
-            return None, error_messages[message_idx]
+            return None, None, messages[message_idx]
 
         with open(vci_source_file_name) as fptr:
             code = fptr.read()
             vci_code = VHDLDesignFile.parse(code)
             if len(vci_code.packages) != 1:
-                raise RuntimeError(
-                    "%s must contain a single VCI package" % vci_source_file_name
+                LOGGER.error(
+                    "{} must contain a single VCI package".format(vci_source_file_name)
                 )
+                return None, None
 
-            vc_constructor, error_msg = get_constructor(code)
+            (
+                vc_constructor,
+                parameters_missing_default_value,
+                error_msg,
+            ) = get_constructor(code)
+
             if not vc_constructor:
-                raise RuntimeError(error_msg)
+                LOGGER.error(error_msg)
+            else:
+                for parameter_name in parameters_missing_default_value:
+                    LOGGER.warning(
+                        "{} parameter in {} is missing a default value".format(
+                            parameter_name, vc_constructor.identifier
+                        )
+                    )
 
             return vci_code.packages[0], vc_constructor
 
@@ -192,7 +236,10 @@ class ComplianceTest(object):
 
         tb_path = join(test_dir, "tb_%s_compliance.vhd" % self.vc_entity.identifier)
         with open(tb_path, "w") as fptr:
-            fptr.write(self.create_vhdl_testbench(template_path))
+            testbench_code = self.create_vhdl_testbench(template_path)
+            if not testbench_code:
+                return None
+            fptr.write(testbench_code)
 
         tb_file = vc_test_lib.add_source_file(tb_path)
         testbench = vc_test_lib.test_bench(
@@ -290,6 +337,8 @@ class ComplianceTest(object):
             else:
                 constructor += "(\n"
                 for parameter in unspecified_parameters:
+                    if parameter in ["actor", "logger", "checker"]:
+                        continue
                     constructor += "    %s => ,\n" % parameter
                 constructor = constructor[:-2] + "\n  );\n"
 
@@ -340,6 +389,8 @@ class ComplianceTest(object):
         vc_entity = vc_code.entities[0]
         vc_handle_t = vc_entity.generics[0].subtype_indication.type_mark
         vci_package, vc_constructor = cls._validate_vci(vci_path, vc_handle_t)
+        if (not vci_package) or (not vc_constructor):
+            return None, None
 
         (
             signal_declarations,
@@ -461,14 +512,20 @@ end architecture;
 
             constructor_call_end = search_start + constructor_call_end_match.end()
 
+            default_values = {}
+            for parameter in self.vc_constructor.parameter_list:
+                for identifier in parameter.identifier_list:
+                    default_values[identifier] = parameter.init_value
+
             architecture_declarations = """\
 constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
   constant custom_logger : logger_t := get_logger("vc");
 
   impure function create_handle return {vc_handle_t} is
     variable handle : {vc_handle_t};
-    variable logger : logger_t := null_logger;
-    variable actor : actor_t := null_actor;
+    variable logger : logger_t := {default_logger};
+    variable actor : actor_t := {default_actor};
+    variable checker : checker_t := {default_checker};
   begin
     if use_custom_logger then
       logger := custom_logger;
@@ -482,6 +539,7 @@ constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
       {specified_parameters}
       logger => logger,
       actor => actor,
+      checker => checker,
       fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
   end;
 
@@ -492,6 +550,15 @@ constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
                 vc_constructor_name=self.vc_constructor.identifier,
                 specified_parameters=specified_parameters,
                 vc_handle_name=self.vc_entity.generics[0].identifier_list[0],
+                default_logger=default_values["logger"]
+                if default_values["logger"]
+                else 'get_logger("vc_logger")',
+                default_actor=default_values["actor"]
+                if default_values["actor"]
+                else 'new_actor("vc_actor")',
+                default_checker=default_values["checker"]
+                if default_values["checker"]
+                else 'new_checker("vc_checker")',
             )
 
             return (
@@ -594,6 +661,8 @@ end process test_runner;""".format(
                 self.vc_facade.source_file.name,
                 self.vci_facade.source_file.name,
             )
+            if not template_code:
+                return None
             template_code = template_code.lower()
 
         design_file = VHDLDesignFile.parse(template_code)
@@ -620,6 +689,8 @@ def main():
         template_code, vc_name = ComplianceTest.create_vhdl_testbench_template(
             args.vc_lib_name, args.vc_path, args.vci_path
         )
+        if not template_code or not vc_name:
+            sys.exit(1)
 
         if not args.output_path:
             output_dir = join(dirname(args.vc_path), ".vc")
@@ -660,6 +731,8 @@ def main():
     )
 
     args = parser.parse_args(sys.argv[1:])
+
+    logging.basicConfig(format="%(levelname)s: %(message)s")
 
     if args.subparser_name == "create":
         create_template(args)

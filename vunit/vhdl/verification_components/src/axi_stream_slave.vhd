@@ -41,7 +41,7 @@ begin
   main : process
     variable request_msg : msg_t;
     variable msg_type    : msg_type_t;
-    
+
     procedure wait_on_pending_transactions is
     begin
       if not is_empty(transaction_token_queue) then
@@ -60,6 +60,9 @@ begin
       handle_wait_for_time(net, msg_type, request_msg);
     elsif msg_type = wait_until_idle_msg then
       wait_on_pending_transactions;
+      if slave.p_monitor /= null_axi_stream_monitor then
+        wait_until_idle(net, as_sync(slave.p_monitor));
+      end if;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif slave.p_fail_on_unexpected_msg_type then
       unexpected_msg_type(msg_type, slave.p_logger);
@@ -158,6 +161,19 @@ begin
         tdest  => tdest,
         tuser  => tuser
       );
+
+    repeater : if slave.p_use_default_monitor generate
+      process
+        constant subscriber : actor_t := new_actor;
+        variable msg        : msg_t;
+      begin
+        subscribe(subscriber, slave.p_monitor.p_actor);
+        loop
+          receive(net, subscriber, msg);
+          publish(net, slave.p_actor, msg);
+        end loop;
+      end process;
+    end generate;
   end generate axi_stream_monitor_generate;
 
   axi_stream_protocol_checker_generate : if slave.p_protocol_checker /= null_axi_stream_protocol_checker generate

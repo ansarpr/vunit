@@ -15,33 +15,33 @@ use work.queue_pkg.all;
 use work.sync_pkg.all;
 
 entity axi_stream_master is
-  generic (
+  generic(
     master : axi_stream_master_t
-    );
-  port (
+  );
+  port(
     aclk     : in  std_logic;
-    areset_n : in  std_logic                                          := '1';
-    tvalid   : out std_logic                                          := '0';
-    tready   : in  std_logic                                          := '1';
-    tdata    : out std_logic_vector(data_length(master)-1 downto 0)   := (others => '0');
-    tlast    : out std_logic                                          := '0';
-    tkeep    : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
-    tstrb    : out std_logic_vector(data_length(master)/8-1 downto 0) := (others => '0');
-    tid      : out std_logic_vector(id_length(master)-1 downto 0)     := (others => '0');
-    tdest    : out std_logic_vector(dest_length(master)-1 downto 0)   := (others => '0');
-    tuser    : out std_logic_vector(user_length(master)-1 downto 0)   := (others => '0')
-    );
+    areset_n : in  std_logic                                              := '1';
+    tvalid   : out std_logic                                              := '0';
+    tready   : in  std_logic                                              := '1';
+    tdata    : out std_logic_vector(data_length(master) - 1 downto 0)     := (others => '0');
+    tlast    : out std_logic                                              := '0';
+    tkeep    : out std_logic_vector(data_length(master) / 8 - 1 downto 0) := (others => '0');
+    tstrb    : out std_logic_vector(data_length(master) / 8 - 1 downto 0) := (others => '0');
+    tid      : out std_logic_vector(id_length(master) - 1 downto 0)       := (others => '0');
+    tdest    : out std_logic_vector(dest_length(master) - 1 downto 0)     := (others => '0');
+    tuser    : out std_logic_vector(user_length(master) - 1 downto 0)     := (others => '0')
+  );
 end entity;
 
 architecture a of axi_stream_master is
-  constant message_queue, transaction_token_queue : queue_t    := new_queue;
-  signal notification : boolean := false;
+  constant message_queue, transaction_token_queue : queue_t := new_queue;
+  signal notification                             : boolean := false;
 begin
 
   main : process
     variable request_msg : msg_t;
     variable msg_type    : msg_type_t;
-    
+
     procedure wait_on_pending_transactions is
     begin
       if not is_empty(transaction_token_queue) then
@@ -60,6 +60,9 @@ begin
       handle_wait_for_time(net, msg_type, request_msg);
     elsif msg_type = wait_until_idle_msg then
       wait_on_pending_transactions;
+      if master.p_monitor /= null_axi_stream_monitor then
+        wait_until_idle(net, as_sync(master.p_monitor));
+      end if;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif master.p_fail_on_unexpected_msg_type then
       unexpected_msg_type(msg_type, master.p_logger);
@@ -67,8 +70,8 @@ begin
   end process;
 
   bus_process : process
-    variable msg : msg_t;
-    variable msg_type : msg_type_t;
+    variable msg               : msg_t;
+    variable msg_type          : msg_type_t;
     variable transaction_token : boolean;
   begin
     if master.p_drive_invalid then
@@ -87,17 +90,17 @@ begin
       tvalid <= '0';
     else
       while not is_empty(message_queue) loop
-        msg := pop(message_queue);
+        msg      := pop(message_queue);
         msg_type := message_type(msg);
 
         if msg_type = stream_push_msg or msg_type = push_axi_stream_msg then
           tvalid <= '1';
-          tdata <= pop_std_ulogic_vector(msg);
+          tdata  <= pop_std_ulogic_vector(msg);
           if msg_type = push_axi_stream_msg then
             tlast <= pop_std_ulogic(msg);
             tkeep <= pop_std_ulogic_vector(msg);
             tstrb <= pop_std_ulogic_vector(msg);
-            tid <= pop_std_ulogic_vector(msg);
+            tid   <= pop_std_ulogic_vector(msg);
             tdest <= pop_std_ulogic_vector(msg);
             tuser <= pop_std_ulogic_vector(msg);
           else
@@ -114,10 +117,10 @@ begin
           end if;
           wait until (rising_edge(aclk) and (tvalid and tready) = '1') or areset_n = '0';
           tvalid <= '0';
-          tlast <= '0';
-          
+          tlast  <= '0';
+
           transaction_token := pop(transaction_token_queue);
-          notification <= not notification;
+          notification      <= not notification;
           wait on notification;
         elsif master.p_fail_on_unexpected_msg_type then
           unexpected_msg_type(msg_type, master.p_logger);
@@ -145,13 +148,27 @@ begin
         tdest  => tdest,
         tuser  => tuser
       );
+
+    repeater : if master.p_use_default_monitor generate
+      process
+        constant subscriber : actor_t := new_actor;
+        variable msg        : msg_t;
+      begin
+        subscribe(subscriber, master.p_monitor.p_actor);
+        loop
+          receive(net, subscriber, msg);
+          publish(net, master.p_actor, msg);
+        end loop;
+      end process;
+    end generate;
+
   end generate axi_stream_monitor_generate;
 
   axi_stream_protocol_checker_generate : if master.p_protocol_checker /= null_axi_stream_protocol_checker generate
-    axi_stream_protocol_checker_inst: entity work.axi_stream_protocol_checker
-      generic map (
+    axi_stream_protocol_checker_inst : entity work.axi_stream_protocol_checker
+      generic map(
         protocol_checker => master.p_protocol_checker)
-      port map (
+      port map(
         aclk     => aclk,
         areset_n => areset_n,
         tvalid   => tvalid,

@@ -7,7 +7,7 @@
 """
 Test the compliance test.
 """
-from unittest import TestCase
+from unittest import TestCase, mock
 from shutil import rmtree
 from os.path import exists, dirname, join, abspath
 from os import makedirs
@@ -15,10 +15,9 @@ from itertools import product
 import re
 from vunit.ostools import renew_path
 from vunit import ComplianceTest
-from vunit.vc.compliance_test import main
+from vunit.vc.compliance_test import main, LOGGER
 from vunit import VUnit
 from vunit.vhdl_parser import VHDLDesignFile, VHDLReference
-from tests.mock_2or3 import mock
 
 
 class TestComplianceTest(TestCase):  # pylint: disable=too-many-public-methods
@@ -48,7 +47,7 @@ end entity;
         self.vci_contents = """
 package vc_pkg is
   impure function new_vc(
-    logger : logger_t := vc_logger;
+    logger : logger_t := default_logger;
     actor : actor_t := null_actor;
     checker : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean := true
@@ -76,17 +75,18 @@ end package;
             outfile.write(contents)
         return full_file_name
 
-    def test_not_finding_vc(self):
-        self.assertRaises(
-            RuntimeError, ComplianceTest, self.vc_lib, "other_vc", "vc_pkg"
-        )
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_not_finding_vc(self, error_mock):
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "other_vc", "vc_pkg")
+        error_mock.assert_called_once_with("Failed to find VC other_vc")
 
-    def test_not_finding_vci(self):
-        self.assertRaises(
-            RuntimeError, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg"
-        )
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_not_finding_vci(self, error_mock):
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
+        error_mock.assert_called_once_with("Failed to find VCI other_vc_pkg")
 
-    def test_failing_on_multiple_entities(self):
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_on_multiple_entities(self, error_mock):
         vc_contents = """
 entity vc1 is
   generic(a : bit);
@@ -99,10 +99,18 @@ end entity;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "vc1_2.vhd"), vc_contents)
         )
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
+        error_mock.assert_called_once_with(
+            "%s must contain a single VC entity" % join(self.tmp_dir, "vc1_2.vhd")
+        )
 
-    def test_failing_on_multiple_package(self):
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
+        error_mock.assert_called_with(
+            "%s must contain a single VC entity" % join(self.tmp_dir, "vc1_2.vhd")
+        )
+
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_on_multiple_package(self, error_mock):
         vci_contents = """
 package vc_pkg1 is
 end package;
@@ -113,10 +121,17 @@ end package;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "vci1_2.vhd"), vci_contents)
         )
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc", "vc_pkg1")
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc", "vc_pkg2")
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "vc_pkg1")
+        error_mock.assert_called_once_with(
+            "%s must contain a single VCI package" % join(self.tmp_dir, "vci1_2.vhd")
+        )
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "vc_pkg2")
+        error_mock.assert_called_with(
+            "%s must contain a single VCI package" % join(self.tmp_dir, "vci1_2.vhd")
+        )
 
-    def test_evaluating_vc_generics(self):
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_evaluating_vc_generics(self, error_mock):
         vc1_contents = """
 entity vc1 is
 end entity;
@@ -124,7 +139,8 @@ end entity;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "vc1.vhd"), vc1_contents)
         )
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
+        error_mock.assert_called_once_with("vc1 must have a single generic")
 
         vc2_contents = """
 entity vc2 is
@@ -134,7 +150,8 @@ end entity;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "vc2.vhd"), vc2_contents)
         )
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
+        error_mock.assert_called_with("vc2 must have a single generic")
 
         vc3_contents = """
 entity vc3 is
@@ -144,9 +161,11 @@ end entity;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "vc3.vhd"), vc3_contents)
         )
-        self.assertRaises(RuntimeError, ComplianceTest, self.vc_lib, "vc3", "vc_pkg")
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc3", "vc_pkg")
+        error_mock.assert_called_with("vc3 must have a single generic")
 
-    def test_failing_with_no_constructor(self):
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_with_no_constructor(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
   impure function create_vc return vc_handle_t;
@@ -155,11 +174,14 @@ end package;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "other_vci.vhd"), vci_contents)
         )
-        self.assertRaises(
-            RuntimeError, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg"
+
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
+        error_mock.assert_called_once_with(
+            "Failed to find constructor function starting with new_"
         )
 
-    def test_failing_with_wrong_constructor_return_type(self):
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_with_wrong_constructor_return_type(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
   impure function new_vc return vc_t;
@@ -168,26 +190,34 @@ end package;
         self.vc_lib.add_source_file(
             self.make_file(join(self.tmp_dir, "other_vci.vhd"), vci_contents)
         )
-        self.assertRaises(
-            RuntimeError, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg"
+
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
+        error_mock.assert_called_once_with(
+            "Found constructor function starting with new_ but not with the correct return type vc_handle_t"
         )
 
-    def test_failing_on_incorrect_constructor_parameters(self):
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_on_incorrect_constructor_parameters(self, error_mock):
         parameters = dict(
             logger=("logger_t", "default_logger"),
-            actor=("actor_t", "default_actor"),
-            checker=("checker_t", "default_checker"),
+            actor=("actor_t", "null_actor"),
+            checker=("checker_t", "null_checker"),
             fail_on_unexpected_msg_type=("boolean", "true"),
         )
         reasons_for_failure = [
             "missing_parameter",
             "invalid_type",
-            "missing_default_value",
+            "invalid_default_value",
         ]
 
         for iteration, (invalid_parameter, invalid_reason) in enumerate(
             product(parameters, reasons_for_failure)
         ):
+            if (invalid_parameter in ["fail_on_unexpected_msg_type", "logger"]) and (
+                invalid_reason == "invalid_default_value"
+            ):
+                continue
+
             vci_contents = (
                 """\
 package other_vc_%d_pkg is
@@ -207,7 +237,74 @@ package other_vc_%d_pkg is
                         parameter_name,
                         parameter_data[1],
                     )
-                elif invalid_reason == "missing_default_value":
+                elif invalid_reason == "invalid_default_value":
+                    vci_contents += "    %s : %s := invalid_default_value;\n" % (
+                        parameter_name,
+                        parameter_data[0],
+                    )
+
+            vci_contents = (
+                vci_contents[:-2]
+                + """
+  ) return vc_handle_t;
+end package;
+"""
+            )
+            self.vc_lib.add_source_file(
+                self.make_file(
+                    join(self.tmp_dir, "other_vci_%d.vhd" % iteration), vci_contents
+                )
+            )
+
+            if invalid_reason == "missing_parameter":
+                error_msg = (
+                    "Found constructor function but the %s parameter is missing"
+                    % invalid_parameter
+                )
+            elif invalid_reason == "invalid_type":
+                error_msg = (
+                    "Found constructor function but the %s parameter is not of type %s"
+                    % (invalid_parameter, parameters[invalid_parameter][0])
+                )
+            elif invalid_reason == "invalid_default_value":
+                error_msg = (
+                    "Found constructor function but null_%s is the only allowed default value for the %s parameter"
+                    % (invalid_parameter, invalid_parameter)
+                )
+
+            self.assertRaises(
+                SystemExit,
+                ComplianceTest,
+                self.vc_lib,
+                "vc",
+                "other_vc_%d_pkg" % iteration,
+            )
+            error_mock.assert_called_with(error_msg)
+
+    def test_warning_on_missing_default_value(self):
+        parameters = dict(
+            logger=("logger_t", "default_logger"),
+            actor=("actor_t", "null_actor"),
+            checker=("checker_t", "null_checker"),
+            fail_on_unexpected_msg_type=("boolean", "true"),
+        )
+
+        for iteration, parameter_wo_init_value in enumerate(parameters):
+            vci_contents = (
+                """\
+package other_vc_%d_pkg is
+  impure function new_vc(
+"""
+                % iteration
+            )
+            for parameter_name, parameter_data in parameters.items():
+                if parameter_name != parameter_wo_init_value:
+                    vci_contents += "    %s : %s := %s;\n" % (
+                        parameter_name,
+                        parameter_data[0],
+                        parameter_data[1],
+                    )
+                else:
                     vci_contents += "    %s : %s;\n" % (
                         parameter_name,
                         parameter_data[0],
@@ -225,13 +322,13 @@ end package;
                     join(self.tmp_dir, "other_vci_%d.vhd" % iteration), vci_contents
                 )
             )
-            self.assertRaises(
-                RuntimeError,
-                ComplianceTest,
-                self.vc_lib,
-                "vc",
-                "other_vc_%d_pkg" % iteration,
-            )
+
+            with mock.patch.object(LOGGER, "warning") as warning_mock:
+                ComplianceTest(self.vc_lib, "vc", "other_vc_%d_pkg" % iteration)
+                warning_mock.assert_called_once_with(
+                    "%s parameter in new_vc is missing a default value"
+                    % parameter_wo_init_value
+                )
 
     def test_create_vhdl_testbench_template_references(self):
         vc_contents = """\

@@ -10,6 +10,7 @@ use ieee.std_logic_1164.all;
 context work.vunit_context;
 context work.com_context;
 use work.axi_stream_pkg.all;
+use work.sync_pkg.all;
 
 entity axi_stream_monitor is
   generic (
@@ -31,6 +32,20 @@ end entity;
 architecture a of axi_stream_monitor is
 begin
   main : process
+    variable request_msg : msg_t;
+    variable msg_type : msg_type_t;
+  begin
+    receive(net,monitor.p_actor, request_msg);
+    msg_type := message_type(request_msg);
+
+    handle_sync_message(net, msg_type, request_msg);
+
+    if monitor.p_fail_on_unexpected_msg_type then
+      unexpected_msg_type(msg_type, monitor.p_logger);
+    end if;
+  end process;
+
+  publish_transactions : process
     variable msg : msg_t;
     variable axi_stream_transaction : axi_stream_transaction_t(
       tdata(tdata'range),
