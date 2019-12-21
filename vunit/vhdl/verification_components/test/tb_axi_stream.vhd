@@ -225,7 +225,7 @@ begin
       pop_stream(net, slave_stream, data, last_bool);
       check_equal(data, std_logic_vector'(x"77"), result("for pop stream data"));
       check_true(last_bool, result("for pop stream last"));
-      check_equal(now, timestamp + 50 ns, result("for push wait time"));
+      check_equal(now, timestamp + 40 ns, result("for push wait time"));
 
       for i in 1 to n_monitors loop
         get_axi_stream_transaction(axi_stream_transaction);
@@ -450,22 +450,22 @@ begin
  not_valid <= not tvalid;
 
  not_valid_data <= '1' when tdata = std_logic_vector'("XXXXXXXX") else '0';
- check_true(aclk, not_valid, not_valid_data, "Invalid data not X");
+ check_true(aclk, not_valid, not_valid_data, "Invalid data not X", active_clock_edge => falling_edge);
  not_valid_keep <= '1' when tkeep = std_logic_vector'("X") else '0';
- check_true(aclk, not_valid, not_valid_keep, "Invalid keep not X");
+ check_true(aclk, not_valid, not_valid_keep, "Invalid keep not X", active_clock_edge => falling_edge);
  not_valid_strb <= '1' when tstrb = std_logic_vector'("X") else '0';
- check_true(aclk, not_valid, not_valid_strb, "Invalid strb not X");
+ check_true(aclk, not_valid, not_valid_strb, "Invalid strb not X", active_clock_edge => falling_edge);
  GEN_CHECK_INVALID_ID: if g_id_length > 0 generate
    not_valid_id   <= '1' when tid   = std_logic_vector'("XXXXXXXX") else '0';
-   check_true(aclk, not_valid, not_valid_id,   "Invalid id not X");
+   check_true(aclk, not_valid, not_valid_id,   "Invalid id not X", active_clock_edge => falling_edge);
  end generate;
  GEN_CHECK_INVALID_DEST: if g_dest_length > 0 generate
    not_valid_dest <= '1' when tdest = std_logic_vector'("XXXXXXXX") else '0';
-   check_true(aclk, not_valid, not_valid_dest, "Invalid dest not X");
+   check_true(aclk, not_valid, not_valid_dest, "Invalid dest not X", active_clock_edge => falling_edge);
  end generate;
  GEN_CHECK_INVALID_USER: if g_user_length > 0 generate
    not_valid_user <= '1' when tuser = std_logic_vector'("00000000") else '0';
-   check_true(aclk, not_valid, not_valid_user, "Invalid user not 0");
+   check_true(aclk, not_valid, not_valid_user, "Invalid user not 0", active_clock_edge => falling_edge);
  end generate;
 
   axi_stream_slave_inst : entity work.axi_stream_slave
