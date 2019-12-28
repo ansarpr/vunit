@@ -41,6 +41,7 @@ begin
   main : process
     variable request_msg : msg_t;
     variable msg_type    : msg_type_t;
+    variable timestamp : time;
 
     procedure wait_on_pending_transactions is
     begin
@@ -60,6 +61,16 @@ begin
       handle_wait_for_time(net, msg_type, request_msg);
     elsif msg_type = wait_until_idle_msg then
       wait_on_pending_transactions;
+      loop
+        timestamp := now;
+        if slave.p_monitor /= null_axi_stream_monitor then
+          wait_until_idle(net, as_sync(slave.p_monitor));
+        end if;
+        if slave.p_protocol_checker /= null_axi_stream_protocol_checker then
+          wait_until_idle(net, as_sync(slave.p_protocol_checker));
+        end if;
+        exit when now = timestamp;
+      end loop;
       if slave.p_monitor /= null_axi_stream_monitor then
         wait_until_idle(net, as_sync(slave.p_monitor));
       end if;

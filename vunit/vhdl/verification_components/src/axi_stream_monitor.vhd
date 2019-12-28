@@ -38,9 +38,14 @@ begin
     receive(net,monitor.p_actor, request_msg);
     msg_type := message_type(request_msg);
 
-    handle_sync_message(net, msg_type, request_msg);
+    handle_wait_for_time(net, msg_type, request_msg);
 
-    if monitor.p_fail_on_unexpected_msg_type then
+    if msg_type = wait_until_idle_msg then
+      if monitor.p_protocol_checker /= null_axi_stream_protocol_checker then
+          wait_until_idle(net, as_sync(monitor.p_protocol_checker));
+      end if;
+      handle_wait_until_idle(net, msg_type, request_msg);
+    elsif monitor.p_fail_on_unexpected_msg_type then
       unexpected_msg_type(msg_type, monitor.p_logger);
     end if;
   end process;
