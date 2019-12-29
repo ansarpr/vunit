@@ -13,12 +13,17 @@ use work.stream_slave_pkg.all;
 use work.sync_pkg.all;
 use work.integer_vector_ptr_pkg.all;
 use work.queue_pkg.all;
+use work.logger_pkg.all;
+use work.checker_pkg.all;
+use work.check_pkg.all;
 
 package uart_pkg is
   type uart_master_t is record
-    p_actor : actor_t;
-    p_baud_rate : natural;
-    p_idle_state : std_logic;
+    p_actor                       : actor_t;
+    p_baud_rate                   : natural;
+    p_idle_state                  : std_logic;
+    p_logger                      : logger_t;
+    p_fail_on_unexpected_msg_type : boolean;
   end record;
 
   type uart_slave_t is record
@@ -36,12 +41,19 @@ package uart_pkg is
   procedure set_baud_rate(signal net : inout network_t;
                           uart_slave : uart_slave_t;
                           baud_rate : natural);
+  constant uart_logger  : logger_t  := get_logger("vunit_lib:uart_pkg");
+  constant uart_checker : checker_t := new_checker(uart_logger);
 
   constant default_baud_rate : natural := 115200;
   constant default_idle_state : std_logic := '1';
   constant default_data_length : positive := 8;
-  impure function new_uart_master(initial_baud_rate : natural := default_baud_rate;
-                                  idle_state : std_logic := default_idle_state) return uart_master_t;
+  impure function new_uart_master(initial_baud_rate           : natural   := default_baud_rate;
+                                  idle_state                  : std_logic := default_idle_state;
+                                  logger                      : logger_t  := uart_logger;
+                                  actor                       : actor_t   := null_actor;
+                                  checker                     : checker_t := null_checker;
+                                  fail_on_unexpected_msg_type : boolean   := true
+                                 ) return uart_master_t;
   impure function new_uart_slave(initial_baud_rate : natural := default_baud_rate;
                                  idle_state : std_logic := default_idle_state;
                                  data_length : positive := default_data_length) return uart_slave_t;
@@ -56,12 +68,22 @@ end package;
 
 package body uart_pkg is
 
-  impure function new_uart_master(initial_baud_rate : natural := default_baud_rate;
-                                  idle_state : std_logic := default_idle_state) return uart_master_t is
+  impure function new_uart_master(initial_baud_rate           : natural   := default_baud_rate;
+                                  idle_state                  : std_logic := default_idle_state;
+                                  logger                      : logger_t  := uart_logger;
+                                  actor                       : actor_t   := null_actor;
+                                  checker                     : checker_t := null_checker;
+                                  fail_on_unexpected_msg_type : boolean   := true
+                                 ) return uart_master_t is
+    variable p_actor : actor_t;
   begin
-    return (p_actor => new_actor,
-            p_baud_rate => initial_baud_rate,
-            p_idle_state => idle_state);
+    p_actor := actor when actor /= null_actor else new_actor;
+
+    return (p_actor                       => p_actor,
+            p_baud_rate                   => initial_baud_rate,
+            p_idle_state                  => idle_state,
+            p_logger                      => logger,
+            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
   end;
 
   impure function new_uart_slave(initial_baud_rate : natural := default_baud_rate;
