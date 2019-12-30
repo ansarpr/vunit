@@ -11,10 +11,7 @@ context vunit_lib.vc_context;
 
 package vc_not_supporting_custom_actor_pkg is
   type vc_not_supporting_custom_actor_handle_t is record
-    p_actor : actor_t;
-    p_logger : logger_t;
-    p_checker : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
+    p_std_vc_cfg : std_vc_cfg_t;
   end record;
 
   constant vc_not_supporting_custom_actor_logger : logger_t := get_logger("vc_not_supporting_custom_actor");
@@ -43,36 +40,17 @@ end package;
 
 package body vc_not_supporting_custom_actor_pkg is
   impure function new_vc_not_supporting_custom_actor(
-    logger : logger_t := vc_not_supporting_custom_actor_logger;
-    actor : actor_t := null_actor;
-    checker : checker_t := null_checker;
-    fail_on_unexpected_msg_type : boolean := true
+    logger                      : logger_t  := vc_not_supporting_custom_actor_logger;
+    actor                       : actor_t   := null_actor;
+    checker                     : checker_t := null_checker;
+    fail_on_unexpected_msg_type : boolean   := true
   ) return vc_not_supporting_custom_actor_handle_t is
-    variable p_actor : actor_t;
-    variable p_checker : checker_t;
-  begin
-    if actor = null_actor then
-      p_actor := new_actor;
-    else
-      p_actor := actor;
-    end if;
-
-    if checker = null_checker then
-      if logger = vc_not_supporting_custom_actor_logger then
-        p_checker := vc_not_supporting_custom_actor_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
-    return (
-      p_logger => logger,
-      p_actor => p_actor,
-      p_checker => p_checker,
-      p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      vc_not_supporting_custom_actor_logger, vc_not_supporting_custom_actor_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
+
+  begin
+    return (p_std_vc_cfg => p_std_vc_cfg);
   end;
 
   procedure transaction(

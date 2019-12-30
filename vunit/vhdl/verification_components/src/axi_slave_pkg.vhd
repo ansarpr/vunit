@@ -56,10 +56,10 @@ package axi_slave_pkg is
 
   -- Return the logger used by the axi_slave
   function get_logger(axi_slave : axi_slave_t) return logger_t;
-    
+
   -- Return the checker used by the axi_slave
   function get_checker(axi_slave : axi_slave_t) return checker_t;
-    
+
   -- Return true if the bus VC fails on unexpected messages to the actor
   function fail_on_unexpected_msg_type(axi_slave : axi_slave_t) return boolean;
 

@@ -69,7 +69,7 @@ begin
       end if;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif fail_on_unexpected_msg_type(bus_handle) then
-      unexpected_msg_type(msg_type, get_logger(bus_handle));
+      unexpected_msg_type(msg_type, get_checker(bus_handle));
     end if;
   end process;
 

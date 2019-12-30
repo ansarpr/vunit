@@ -74,7 +74,7 @@ begin
       end loop;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif fail_on_unexpected_msg_type(master.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_logger(master.p_std_vc_cfg));
+      unexpected_msg_type(msg_type, get_checker(master.p_std_vc_cfg));
     end if;
   end process;
 
@@ -132,7 +132,7 @@ begin
           notification      <= not notification;
           wait on notification;
         elsif fail_on_unexpected_msg_type(master.p_std_vc_cfg) then
-          unexpected_msg_type(msg_type, get_logger(master.p_std_vc_cfg));
+          unexpected_msg_type(msg_type, get_checker(master.p_std_vc_cfg));
         end if;
 
         delete(msg);

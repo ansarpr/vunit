@@ -11,10 +11,7 @@ context vunit_lib.vc_context;
 
 package vc_not_supporting_unexpected_msg_handling_pkg is
   type vc_not_supporting_unexpected_msg_handling_handle_t is record
-    p_actor : actor_t;
-    p_logger : logger_t;
-    p_checker : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
+    p_std_vc_cfg : std_vc_cfg_t;
   end record;
 
   constant vc_not_supporting_unexpected_msg_handling_logger : logger_t := get_logger("vc_not_supporting_unexpected_msg_handling");
@@ -40,38 +37,19 @@ package body vc_not_supporting_unexpected_msg_handling_pkg is
     checker : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean := true
   ) return vc_not_supporting_unexpected_msg_handling_handle_t is
-    variable p_actor : actor_t;
-    variable p_checker : checker_t;
-  begin
-    if actor = null_actor then
-      p_actor := new_actor;
-    else
-      p_actor := actor;
-    end if;
-
-    if checker = null_checker then
-      if logger = vc_not_supporting_unexpected_msg_handling_logger then
-        p_checker := vc_not_supporting_unexpected_msg_handling_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
-    return (
-      p_logger => logger,
-      p_actor => p_actor,
-      p_checker => p_checker,
-      p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      vc_not_supporting_unexpected_msg_handling_logger, vc_not_supporting_unexpected_msg_handling_checker,
+      actor, logger, checker, fail_on_unexpected_msg_type
     );
+  begin
+    return (p_std_vc_cfg => p_std_vc_cfg);
   end;
 
   impure function as_sync(
     vc_h : vc_not_supporting_unexpected_msg_handling_handle_t
   ) return sync_handle_t is
   begin
-    return vc_h.p_actor;
+    return get_actor(vc_h.p_std_vc_cfg);
   end;
 
 end package body;

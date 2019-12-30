@@ -23,13 +23,13 @@ begin
     variable msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, vc_h.p_actor, msg);
+    receive(net, get_actor(vc_h.p_std_vc_cfg), msg);
 
     msg_type := message_type(msg);
 
     handle_sync_message(net, msg_type, msg);
 
-    unexpected_msg_type(msg_type, vc_h.p_logger);
+    unexpected_msg_type(msg_type, get_checker(vc_h.p_std_vc_cfg));
   end process;
 end architecture;
 

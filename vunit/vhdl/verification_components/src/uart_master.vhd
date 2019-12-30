@@ -14,6 +14,7 @@ use vunit_lib.stream_master_pkg.all;
 use vunit_lib.uart_pkg.all;
 use vunit_lib.queue_pkg.all;
 use vunit_lib.sync_pkg.all;
+use vunit_lib.vc_pkg.all;
 
 entity uart_master is
   generic (
@@ -50,7 +51,7 @@ begin
     variable baud_rate : natural := uart.p_baud_rate;
     variable msg_type : msg_type_t;
   begin
-    receive(net, uart.p_actor, msg);
+    receive(net, get_actor(uart.p_std_vc_cfg), msg);
     msg_type := message_type(msg);
 
     handle_sync_message(net, msg_type, msg);
@@ -59,8 +60,8 @@ begin
       uart_send(pop_std_ulogic_vector(msg), tx, baud_rate);
     elsif msg_type = uart_set_baud_rate_msg then
       baud_rate := pop(msg);
-    elsif uart.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, uart.p_logger);
+    elsif fail_on_unexpected_msg_type(uart.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_checker(uart.p_std_vc_cfg));
     end if;
   end process;
 

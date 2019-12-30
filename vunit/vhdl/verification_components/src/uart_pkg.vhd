@@ -11,6 +11,7 @@ context work.com_context;
 use work.stream_master_pkg.all;
 use work.stream_slave_pkg.all;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 use work.integer_vector_ptr_pkg.all;
 use work.queue_pkg.all;
 use work.logger_pkg.all;
@@ -19,20 +20,16 @@ use work.check_pkg.all;
 
 package uart_pkg is
   type uart_master_t is record
-    p_actor                       : actor_t;
-    p_baud_rate                   : natural;
-    p_idle_state                  : std_logic;
-    p_logger                      : logger_t;
-    p_fail_on_unexpected_msg_type : boolean;
+    p_std_vc_cfg : std_vc_cfg_t;
+    p_baud_rate  : natural;
+    p_idle_state : std_logic;
   end record;
 
   type uart_slave_t is record
-    p_actor                       : actor_t;
-    p_baud_rate                   : natural;
-    p_idle_state                  : std_logic;
-    p_data_length                 : positive;
-    p_logger                      : logger_t;
-    p_fail_on_unexpected_msg_type : boolean;
+    p_std_vc_cfg  : std_vc_cfg_t;
+    p_baud_rate   : natural;
+    p_idle_state  : std_logic;
+    p_data_length : positive;
   end record;
 
   -- Set the baud rate [bits/s]
@@ -81,15 +78,14 @@ package body uart_pkg is
                                   checker                     : checker_t := null_checker;
                                   fail_on_unexpected_msg_type : boolean   := true
                                  ) return uart_master_t is
-    variable p_actor : actor_t;
-  begin
-    p_actor := actor when actor /= null_actor else new_actor;
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      uart_logger, uart_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
 
-    return (p_actor                       => p_actor,
-            p_baud_rate                   => initial_baud_rate,
-            p_idle_state                  => idle_state,
-            p_logger                      => logger,
-            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
+  begin
+    return (p_std_vc_cfg => p_std_vc_cfg,
+            p_baud_rate  => initial_baud_rate,
+            p_idle_state => idle_state);
   end;
 
   impure function new_uart_slave(initial_baud_rate           : natural   := default_baud_rate;
@@ -99,36 +95,34 @@ package body uart_pkg is
                                  actor                       : actor_t   := null_actor;
                                  checker                     : checker_t := null_checker;
                                  fail_on_unexpected_msg_type : boolean   := true) return uart_slave_t is
-    variable p_actor : actor_t;
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      uart_logger, uart_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
   begin
-    p_actor := actor when actor /= null_actor else new_actor;
-
-    return (p_actor                       => p_actor,
-            p_baud_rate                   => initial_baud_rate,
-            p_idle_state                  => idle_state,
-            p_data_length                 => data_length,
-            p_logger                      => logger,
-            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
+    return (p_std_vc_cfg  => p_std_vc_cfg,
+            p_baud_rate   => initial_baud_rate,
+            p_idle_state  => idle_state,
+            p_data_length => data_length);
   end;
 
   impure function as_stream(uart_master : uart_master_t) return stream_master_t is
   begin
-    return stream_master_t'(p_actor => uart_master.p_actor);
+    return stream_master_t'(p_actor => get_actor(uart_master.p_std_vc_cfg));
   end;
 
   impure function as_stream(uart_slave : uart_slave_t) return stream_slave_t is
   begin
-    return stream_slave_t'(p_actor => uart_slave.p_actor);
+    return stream_slave_t'(p_actor => get_actor(uart_slave.p_std_vc_cfg));
   end;
 
   impure function as_sync(uart_master : uart_master_t) return sync_handle_t is
   begin
-    return uart_master.p_actor;
+    return get_actor(uart_master.p_std_vc_cfg);
   end;
 
   impure function as_sync(uart_slave : uart_slave_t) return sync_handle_t is
   begin
-    return uart_slave.p_actor;
+    return get_actor(uart_slave.p_std_vc_cfg);
   end;
 
   procedure set_baud_rate(signal net : inout network_t;
@@ -144,13 +138,13 @@ package body uart_pkg is
                           uart_master : uart_master_t;
                           baud_rate : natural) is
   begin
-    set_baud_rate(net, uart_master.p_actor, baud_rate);
+    set_baud_rate(net, get_actor(uart_master.p_std_vc_cfg), baud_rate);
   end;
 
   procedure set_baud_rate(signal net : inout network_t;
                           uart_slave : uart_slave_t;
                           baud_rate : natural) is
   begin
-    set_baud_rate(net, uart_slave.p_actor, baud_rate);
+    set_baud_rate(net, get_actor(uart_slave.p_std_vc_cfg), baud_rate);
   end;
 end package body;

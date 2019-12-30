@@ -49,6 +49,7 @@ package axi_slave_private_pkg is
                    data : std_logic_vector);
     impure function get_actor return actor_t;
     impure function get_logger return logger_t;
+    impure function get_checker return checker_t;
     impure function fail_on_unexpected_msg_type return boolean;
 
     procedure set_address_fifo_depth(depth : positive);
@@ -171,6 +172,11 @@ package body axi_slave_private_pkg is
     impure function get_logger return logger_t is
     begin
       return get_logger(p_axi_slave.p_std_vc_cfg);
+    end;
+
+    impure function get_checker return checker_t is
+    begin
+      return get_checker(p_axi_slave.p_std_vc_cfg);
     end;
 
     impure function fail_on_unexpected_msg_type return boolean is
@@ -564,7 +570,7 @@ package body axi_slave_private_pkg is
         self.enable_well_behaved_check;
         acknowledge(net, request_msg, true);
       elsif self.fail_on_unexpected_msg_type then
-        unexpected_msg_type(msg_type, self.get_logger);
+        unexpected_msg_type(msg_type, self.get_checker);
       end if;
 
       delete(request_msg);

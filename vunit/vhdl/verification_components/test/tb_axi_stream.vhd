@@ -431,7 +431,7 @@ begin
       wait_for_time(net, as_sync(master_axi_stream.p_monitor), 1 ns);
       wait_until_idle(net, as_sync(master_axi_stream));
       check_equal(now, timestamp + 1 ns);
-      
+
       timestamp := now;
       wait_for_time(net, as_sync(master_axi_stream.p_protocol_checker), 2 ns);
       wait_until_idle(net, as_sync(master_axi_stream));
@@ -447,7 +447,7 @@ begin
       wait_for_time(net, as_sync(slave_axi_stream.p_protocol_checker), 2 ns);
       wait_until_idle(net, as_sync(slave_axi_stream));
       check_equal(now, timestamp + 2 ns);
-      
+
     elsif run("test that the monitor waits on its subcomponents to be idle") then
       timestamp := now;
       wait_for_time(net, as_sync(monitor.p_protocol_checker), 1 ns);

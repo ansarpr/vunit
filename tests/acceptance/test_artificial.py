@@ -261,25 +261,29 @@ EXPECTED_REPORT = (
     ("passed", "test_lib.tb_vc_compliance.Test that the actor can be customised"),
     (
         "passed",
-        "test_lib.tb_vc_compliance.fail_on_unexpected_msg_type=False.Test unexpected message handling",
+        "test_lib.tb_vc_compliance.accept_unexpected_msg_type.Test unexpected message handling",
     ),
     (
         "passed",
-        "test_lib.tb_vc_compliance.fail_on_unexpected_msg_type=True.Test unexpected message handling",
+        "test_lib.tb_vc_compliance.fail_unexpected_msg_type_with_null_checker.Test unexpected message handling",
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_sync_compliance.fail_on_unexpected_msg_type=False."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_compliance.fail_unexpected_msg_type_with_custom_checker.Test unexpected message handling",
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_sync_compliance.fail_on_unexpected_msg_type=True."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_sync_compliance.accept_unexpected_msg_type.Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_not_supporting_sync_compliance.fail_unexpected_msg_type_with_null_checker."
+        "Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_not_supporting_sync_compliance.fail_unexpected_msg_type_with_custom_checker."
+        "Test unexpected message handling",
     ),
     (
         "passed",
@@ -287,17 +291,18 @@ EXPECTED_REPORT = (
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_custom_actor_compliance.fail_on_unexpected_msg_type=False."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_custom_actor_compliance.accept_unexpected_msg_type."
+        "Test unexpected message handling",
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_custom_actor_compliance.fail_on_unexpected_msg_type=True."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_custom_actor_compliance.fail_unexpected_msg_type_with_null_checker."
+        "Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_not_supporting_custom_actor_compliance.fail_unexpected_msg_type_with_custom_checker."
+        "Test unexpected message handling",
     ),
     (
         "passed",
@@ -309,10 +314,13 @@ EXPECTED_REPORT = (
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_custom_logger_compliance.fail_on_unexpected_msg_type=False."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_custom_logger_compliance.accept_unexpected_msg_type."
+        "Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_not_supporting_custom_logger_compliance.fail_unexpected_msg_type_with_custom_checker."
+        "Test unexpected message handling",
     ),
     (
         "passed",
@@ -324,10 +332,13 @@ EXPECTED_REPORT = (
     ),
     (
         "passed",
-        (
-            "test_lib.tb_vc_not_supporting_unexpected_msg_handling_compliance.fail_on_unexpected_msg_type=True."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_unexpected_msg_handling_compliance.fail_unexpected_msg_type_with_null_checker."
+        "Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_not_supporting_unexpected_msg_handling_compliance."
+        "fail_unexpected_msg_type_with_custom_checker.Test unexpected message handling",
     ),
     (
         "failed",
@@ -343,17 +354,13 @@ EXPECTED_REPORT = (
     ),
     (
         "failed",
-        (
-            "test_lib.tb_vc_not_supporting_custom_logger_compliance.fail_on_unexpected_msg_type=True."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_custom_logger_compliance.fail_unexpected_msg_type_with_null_checker."
+        "Test unexpected message handling",
     ),
     (
         "failed",
-        (
-            "test_lib.tb_vc_not_supporting_unexpected_msg_handling_compliance.fail_on_unexpected_msg_type=False."
-            "Test unexpected message handling"
-        ),
+        "test_lib.tb_vc_not_supporting_unexpected_msg_handling_compliance.accept_unexpected_msg_type."
+        "Test unexpected message handling",
     ),
     (
         "passed",
@@ -365,10 +372,16 @@ EXPECTED_REPORT = (
     ),
     (
         "passed",
-        "test_lib.tb_vc_with_template_compliance.fail_on_unexpected_msg_type=False.Test unexpected message handling",
+        "test_lib.tb_vc_with_template_compliance.accept_unexpected_msg_type.Test unexpected message handling",
     ),
     (
         "passed",
-        "test_lib.tb_vc_with_template_compliance.fail_on_unexpected_msg_type=True.Test unexpected message handling",
+        "test_lib.tb_vc_with_template_compliance.fail_unexpected_msg_type_with_null_checker."
+        "Test unexpected message handling",
+    ),
+    (
+        "passed",
+        "test_lib.tb_vc_with_template_compliance.fail_unexpected_msg_type_with_custom_checker."
+        "Test unexpected message handling",
     ),
 )

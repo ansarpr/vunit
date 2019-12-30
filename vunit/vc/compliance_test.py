@@ -38,7 +38,7 @@ class ComplianceTest(object):
         try:
             self.vc_facade = vc_lib.get_entity(vc_name)
         except KeyError:
-            LOGGER.error("Failed to find VC {}".format(vc_name))
+            LOGGER.error("Failed to find VC %s", vc_name)
             sys.exit(1)
 
         self.vc_code = self._validate_vc(self.vc_facade.source_file.name)
@@ -51,7 +51,7 @@ class ComplianceTest(object):
         try:
             self.vci_facade = vc_lib.package(vci_name)
         except KeyError:
-            LOGGER.error("Failed to find VCI {}".format(vci_name))
+            LOGGER.error("Failed to find VCI %s", vci_name)
             sys.exit(1)
 
         _, self.vc_constructor = self._validate_vci(
@@ -69,9 +69,7 @@ class ComplianceTest(object):
             vc_code = VHDLDesignFile.parse(fptr.read())
 
             if len(vc_code.entities) != 1:
-                LOGGER.error(
-                    "{} must contain a single VC entity".format(vc_source_file_name)
-                )
+                LOGGER.error("%s must contain a single VC entity", vc_source_file_name)
                 return None
 
             vc_entity = vc_code.entities[0]
@@ -80,9 +78,7 @@ class ComplianceTest(object):
                 (len(vc_entity.generics) == 1)
                 and (len(vc_entity.generics[0].identifier_list) == 1)
             ):
-                LOGGER.error(
-                    "{} must have a single generic".format(vc_entity.identifier)
-                )
+                LOGGER.error("%s must have a single generic", vc_entity.identifier)
                 return None
 
             return vc_code
@@ -181,7 +177,7 @@ class ComplianceTest(object):
             vci_code = VHDLDesignFile.parse(code)
             if len(vci_code.packages) != 1:
                 LOGGER.error(
-                    "{} must contain a single VCI package".format(vci_source_file_name)
+                    "%s must contain a single VCI package", vci_source_file_name
                 )
                 return None, None
 
@@ -196,9 +192,9 @@ class ComplianceTest(object):
             else:
                 for parameter_name in parameters_missing_default_value:
                     LOGGER.warning(
-                        "{} parameter in {} is missing a default value".format(
-                            parameter_name, vc_constructor.identifier
-                        )
+                        "%s parameter in %s is missing a default value",
+                        parameter_name,
+                        vc_constructor.identifier,
                     )
 
             return vci_code.packages[0], vc_constructor
@@ -249,16 +245,31 @@ class ComplianceTest(object):
         test.set_generic("use_custom_actor", True)
 
         test = testbench.test("Test unexpected message handling")
-        for fail_on_unexpected_msg_type in [False, True]:
-            test.add_config(
-                name="fail_on_unexpected_msg_type=%s"
-                % str(fail_on_unexpected_msg_type),
-                generics=dict(
-                    fail_on_unexpected_msg_type=fail_on_unexpected_msg_type,
-                    use_custom_logger=True,
-                    use_custom_actor=True,
-                ),
-            )
+        test.add_config(
+            name="accept_unexpected_msg_type",
+            generics=dict(
+                fail_on_unexpected_msg_type=False,
+                use_custom_logger=True,
+                use_custom_actor=True,
+            ),
+        )
+        test.add_config(
+            name="fail_unexpected_msg_type_with_null_checker",
+            generics=dict(
+                fail_on_unexpected_msg_type=True,
+                use_custom_logger=True,
+                use_custom_actor=True,
+            ),
+        )
+        test.add_config(
+            name="fail_unexpected_msg_type_with_custom_checker",
+            generics=dict(
+                fail_on_unexpected_msg_type=True,
+                use_custom_logger=True,
+                use_custom_checker=True,
+                use_custom_actor=True,
+            ),
+        )
 
         return tb_file
 
@@ -520,6 +531,7 @@ end architecture;
             architecture_declarations = """\
 constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
   constant custom_logger : logger_t := get_logger("vc");
+  constant custom_checker : checker_t := new_checker(get_logger("vc_check"));
 
   impure function create_handle return {vc_handle_t} is
     variable handle : {vc_handle_t};
@@ -533,6 +545,10 @@ constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
 
     if use_custom_actor then
       actor := custom_actor;
+    end if;
+
+    if use_custom_checker then
+      checker := custom_checker;
     end if;
 
     return {vc_constructor_name}(
@@ -578,6 +594,7 @@ constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
 test_runner : process
   variable t_start : time;
   variable msg : msg_t;
+  variable error_logger : logger_t;
 begin
   test_runner_setup(runner, runner_cfg);
 
@@ -604,16 +621,21 @@ begin
       check_equal(now - t_start, 6 ns);
 
     elsif run("Test unexpected message handling") then
-      mock(custom_logger, failure);
+      if use_custom_checker then
+        error_logger := get_logger(custom_checker);
+      else
+        error_logger := custom_logger;
+      end if;
+      mock(error_logger, failure);
       msg := new_msg(unexpected_msg);
       send(net, custom_actor, msg);
       wait for 1 ns;
       if fail_on_unexpected_msg_type then
-        check_only_log(custom_logger, "Got unexpected message unexpected msg", failure);
+        check_only_log(error_logger, "Got unexpected message unexpected msg", failure);
       else
         check_no_log;
       end if;
-      unmock(custom_logger);
+      unmock(error_logger);
     end if;
 
   end loop;
@@ -639,6 +661,7 @@ end process test_runner;""".format(
             )
 
             new_generics = """use_custom_logger : boolean := false;
+    use_custom_checker : boolean := false;
     use_custom_actor : boolean := false;
     fail_on_unexpected_msg_type : boolean := true;
     runner_cfg : string"""

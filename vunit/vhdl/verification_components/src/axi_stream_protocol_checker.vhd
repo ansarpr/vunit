@@ -99,7 +99,7 @@ begin
       wait_until_all_streams_have_completed;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif fail_on_unexpected_msg_type(protocol_checker.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_logger(protocol_checker.p_std_vc_cfg));
+      unexpected_msg_type(msg_type, get_checker(protocol_checker.p_std_vc_cfg));
     end if;
   end process;
 

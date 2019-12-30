@@ -25,22 +25,37 @@ package wishbone_pkg is
   end record;
 
   constant wishbone_slave_logger : logger_t := get_logger("vunit_lib:wishbone_slave_pkg");
+  constant wishbone_slave_checker : checker_t := new_checker(wishbone_slave_logger);
+
   impure function new_wishbone_slave(
-    memory : memory_t;
-    ack_high_probability : real := 1.0;
-    stall_high_probability : real := 0.0;
-    logger : logger_t := wishbone_slave_logger)
-    return wishbone_slave_t;
+    memory                      : memory_t;
+    ack_high_probability        : real      := 1.0;
+    stall_high_probability      : real      := 0.0;
+    logger                      : logger_t  := wishbone_slave_logger;
+    actor                       : actor_t   := null_actor;
+    checker                     : checker_t := null_checker;
+    fail_on_unexpected_msg_type : boolean   := true
+  ) return wishbone_slave_t;
+
+  impure function as_sync(slave : wishbone_slave_t) return sync_handle_t;
 
 end package;
+
 package body wishbone_pkg is
 
   impure function new_wishbone_slave(
-    memory : memory_t;
-    ack_high_probability : real := 1.0;
-    stall_high_probability : real := 0.0;
-    logger : logger_t := wishbone_slave_logger)
-    return wishbone_slave_t is
+    memory                      : memory_t;
+    ack_high_probability        : real      := 1.0;
+    stall_high_probability      : real      := 0.0;
+    logger                      : logger_t  := wishbone_slave_logger;
+    actor                       : actor_t   := null_actor;
+    checker                     : checker_t := null_checker;
+    fail_on_unexpected_msg_type : boolean   := true
+  ) return wishbone_slave_t is
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      wishbone_slave_logger, wishbone_slave_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
+
   begin
     return (p_actor => new_actor,
             p_ack_actor => new_actor,

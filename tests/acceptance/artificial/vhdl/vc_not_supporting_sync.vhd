@@ -23,12 +23,12 @@ begin
     variable msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, vc_h.p_actor, msg);
+    receive(net, get_actor(vc_h.p_std_vc_cfg), msg);
 
     msg_type := message_type(msg);
 
-    if vc_h.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, vc_h.p_logger);
+    if fail_on_unexpected_msg_type(vc_h.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_checker(vc_h.p_std_vc_cfg));
     end if;
   end process;
 end architecture;

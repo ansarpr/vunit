@@ -47,7 +47,7 @@ begin
       end if;
       handle_wait_until_idle(net, msg_type, request_msg);
     elsif fail_on_unexpected_msg_type(monitor.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_logger(monitor.p_std_vc_cfg));
+      unexpected_msg_type(msg_type, get_checker(monitor.p_std_vc_cfg));
     end if;
   end process;
 

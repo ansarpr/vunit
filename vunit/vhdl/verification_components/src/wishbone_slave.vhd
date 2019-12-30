@@ -43,7 +43,27 @@ architecture a of wishbone_slave is
 
   constant slave_write_msg  : msg_type_t := new_msg_type("wb slave write");
   constant slave_read_msg   : msg_type_t := new_msg_type("wb slave read");
+
+  signal active_transaction : boolean := false;
 begin
+
+  main : process
+    variable request_msg : msg_t;
+    variable msg_type    : msg_type_t;
+  begin
+    receive(net, get_actor(wishbone_slave.p_std_vc_cfg), request_msg);
+    msg_type := message_type(request_msg);
+
+    if msg_type = wait_for_time_msg or msg_type = wait_until_idle_msg then
+      while active_transaction or has_message(wishbone_slave.p_ack_actor) loop
+        wait until rising_edge(clk);
+      end loop;
+      handle_sync_message(net, msg_type, request_msg);
+    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_vc_cfg));
+    end if;
+  end process;
+
 
   request : process
     variable wr_request_msg : msg_t;

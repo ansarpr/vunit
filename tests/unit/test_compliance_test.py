@@ -78,12 +78,12 @@ end package;
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
     def test_not_finding_vc(self, error_mock):
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "other_vc", "vc_pkg")
-        error_mock.assert_called_once_with("Failed to find VC other_vc")
+        error_mock.assert_called_once_with("Failed to find VC %s", "other_vc")
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
     def test_not_finding_vci(self, error_mock):
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
-        error_mock.assert_called_once_with("Failed to find VCI other_vc_pkg")
+        error_mock.assert_called_once_with("Failed to find VCI %s", "other_vc_pkg")
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
     def test_failing_on_multiple_entities(self, error_mock):
@@ -101,12 +101,12 @@ end entity;
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
         error_mock.assert_called_once_with(
-            "%s must contain a single VC entity" % join(self.tmp_dir, "vc1_2.vhd")
+            "%s must contain a single VC entity", join(self.tmp_dir, "vc1_2.vhd")
         )
 
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
         error_mock.assert_called_with(
-            "%s must contain a single VC entity" % join(self.tmp_dir, "vc1_2.vhd")
+            "%s must contain a single VC entity", join(self.tmp_dir, "vc1_2.vhd")
         )
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
@@ -123,11 +123,11 @@ end package;
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "vc_pkg1")
         error_mock.assert_called_once_with(
-            "%s must contain a single VCI package" % join(self.tmp_dir, "vci1_2.vhd")
+            "%s must contain a single VCI package", join(self.tmp_dir, "vci1_2.vhd")
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "vc_pkg2")
         error_mock.assert_called_with(
-            "%s must contain a single VCI package" % join(self.tmp_dir, "vci1_2.vhd")
+            "%s must contain a single VCI package", join(self.tmp_dir, "vci1_2.vhd")
         )
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
@@ -140,7 +140,7 @@ end entity;
             self.make_file(join(self.tmp_dir, "vc1.vhd"), vc1_contents)
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc1", "vc_pkg")
-        error_mock.assert_called_once_with("vc1 must have a single generic")
+        error_mock.assert_called_once_with("%s must have a single generic", "vc1")
 
         vc2_contents = """
 entity vc2 is
@@ -151,7 +151,7 @@ end entity;
             self.make_file(join(self.tmp_dir, "vc2.vhd"), vc2_contents)
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc2", "vc_pkg")
-        error_mock.assert_called_with("vc2 must have a single generic")
+        error_mock.assert_called_with("%s must have a single generic", "vc2")
 
         vc3_contents = """
 entity vc3 is
@@ -162,7 +162,7 @@ end entity;
             self.make_file(join(self.tmp_dir, "vc3.vhd"), vc3_contents)
         )
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc3", "vc_pkg")
-        error_mock.assert_called_with("vc3 must have a single generic")
+        error_mock.assert_called_with("%s must have a single generic", "vc3")
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
     def test_failing_with_no_constructor(self, error_mock):
@@ -326,8 +326,9 @@ end package;
             with mock.patch.object(LOGGER, "warning") as warning_mock:
                 ComplianceTest(self.vc_lib, "vc", "other_vc_%d_pkg" % iteration)
                 warning_mock.assert_called_once_with(
-                    "%s parameter in new_vc is missing a default value"
-                    % parameter_wo_init_value
+                    "%s parameter in %s is missing a default value",
+                    parameter_wo_init_value,
+                    "new_vc",
                 )
 
     def test_create_vhdl_testbench_template_references(self):
