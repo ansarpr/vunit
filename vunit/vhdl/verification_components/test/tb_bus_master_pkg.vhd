@@ -92,8 +92,8 @@ begin
       unmock(bus_logger);
 
     elsif run("test custom logger and actor bus master") then
-      check(custom_logger_and_actor_bus_handle.p_logger = logger);
-      check(custom_logger_and_actor_bus_handle.p_actor = actor);
+      check(get_logger(custom_logger_and_actor_bus_handle) = logger);
+      check(get_actor(custom_logger_and_actor_bus_handle) = actor);
     end if;
     test_runner_cleanup(runner);
   end process;

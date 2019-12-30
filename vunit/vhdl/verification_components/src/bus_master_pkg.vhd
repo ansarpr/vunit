@@ -13,6 +13,7 @@ use work.logger_pkg.all;
 use work.checker_pkg.all;
 context work.com_context;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 use work.queue_pkg.all;
 
 package bus_master_pkg is
@@ -45,8 +46,17 @@ package bus_master_pkg is
                           checker : checker_t := null_checker;
                           fail_on_unexpected_msg_type : boolean := true) return bus_master_t;
 
+  -- Return the actor used by the bus master
+  function get_actor(bus_handle : bus_master_t) return actor_t;
+
   -- Return the logger used by the bus master
   function get_logger(bus_handle : bus_master_t) return logger_t;
+    
+  -- Return the checker used by the bus master
+  function get_checker(bus_handle : bus_master_t) return checker_t;
+    
+  -- Return true if the bus VC fails on unexpected messages to the actor
+  function fail_on_unexpected_msg_type(bus_handle : bus_master_t) return boolean;
 
   -- Return the length of the data on this bus
   impure function data_length(bus_handle : bus_master_t) return natural;

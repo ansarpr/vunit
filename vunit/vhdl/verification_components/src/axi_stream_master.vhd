@@ -13,6 +13,7 @@ use work.stream_master_pkg.all;
 use work.axi_stream_pkg.all;
 use work.queue_pkg.all;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 
 entity axi_stream_master is
   generic(
@@ -50,7 +51,7 @@ begin
       end if;
     end;
   begin
-    receive(net, master.p_actor, request_msg);
+    receive(net, get_actor(master.p_std_vc_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     if msg_type = stream_push_msg or msg_type = push_axi_stream_msg then
@@ -72,15 +73,15 @@ begin
         exit when now = timestamp;
       end loop;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif master.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, master.p_logger);
+    elsif fail_on_unexpected_msg_type(master.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_logger(master.p_std_vc_cfg));
     end if;
   end process;
 
   bus_process : process
-    variable msg               : msg_t;
-    variable msg_type          : msg_type_t;
-    variable transaction_token : boolean;
+    variable msg      : msg_t;
+    variable msg_type : msg_type_t;
+    variable not_used : boolean;
   begin
     if master.p_drive_invalid then
       tdata <= (others => master.p_drive_invalid_val);
@@ -127,11 +128,11 @@ begin
           tvalid <= '0';
           tlast  <= '0';
 
-          transaction_token := pop(transaction_token_queue);
+          not_used := pop(transaction_token_queue);
           notification      <= not notification;
           wait on notification;
-        elsif master.p_fail_on_unexpected_msg_type then
-          unexpected_msg_type(msg_type, master.p_logger);
+        elsif fail_on_unexpected_msg_type(master.p_std_vc_cfg) then
+          unexpected_msg_type(msg_type, get_logger(master.p_std_vc_cfg));
         end if;
 
         delete(msg);
@@ -162,10 +163,10 @@ begin
         constant subscriber : actor_t := new_actor;
         variable msg        : msg_t;
       begin
-        subscribe(subscriber, master.p_monitor.p_actor);
+        subscribe(subscriber, get_actor(master.p_monitor.p_std_vc_cfg));
         loop
           receive(net, subscriber, msg);
-          publish(net, master.p_actor, msg);
+          publish(net, get_actor(master.p_std_vc_cfg), msg);
         end loop;
       end process;
     end generate;

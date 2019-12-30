@@ -12,6 +12,7 @@ context work.com_context;
 use work.stream_slave_pkg.all;
 use work.axi_stream_pkg.all;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 use work.string_ptr_pkg.all;
 
 entity axi_stream_slave is
@@ -50,7 +51,7 @@ begin
       end if;
     end;
   begin
-    receive(net, slave.p_actor, request_msg);
+    receive(net, get_actor(slave.p_std_vc_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     if msg_type = stream_pop_msg or msg_type = pop_axi_stream_msg or msg_type = check_axi_stream_msg then
@@ -75,8 +76,8 @@ begin
         wait_until_idle(net, as_sync(slave.p_monitor));
       end if;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif slave.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, slave.p_logger);
+    elsif fail_on_unexpected_msg_type(slave.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_logger(slave.p_std_vc_cfg));
     end if;
   end process;
 
@@ -147,8 +148,8 @@ begin
         transaction_token := pop(transaction_token_queue);
         notification      <= not notification;
         wait on notification;
-      elsif slave.p_fail_on_unexpected_msg_type then
-        unexpected_msg_type(msg_type, slave.p_logger);
+      elsif fail_on_unexpected_msg_type(slave.p_std_vc_cfg) then
+        unexpected_msg_type(msg_type, get_logger(slave.p_std_vc_cfg));
       end if;
 
     end loop;
@@ -178,10 +179,10 @@ begin
         constant subscriber : actor_t := new_actor;
         variable msg        : msg_t;
       begin
-        subscribe(subscriber, slave.p_monitor.p_actor);
+        subscribe(subscriber, get_actor(slave.p_monitor.p_std_vc_cfg));
         loop
           receive(net, subscriber, msg);
-          publish(net, slave.p_actor, msg);
+          publish(net, get_actor(slave.p_std_vc_cfg), msg);
         end loop;
       end process;
     end generate;

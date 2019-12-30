@@ -15,6 +15,7 @@ use std.textio.all;
 use work.axi_pkg.all;
 use work.queue_pkg.all;
 use work.integer_vector_ptr_pkg.all;
+use work.vc_pkg.all;
 context work.vunit_context;
 context work.com_context;
 context work.vc_context;
@@ -164,17 +165,17 @@ package body axi_slave_private_pkg is
 
     impure function get_actor return actor_t is
     begin
-      return p_axi_slave.p_actor;
+      return get_actor(p_axi_slave.p_std_vc_cfg);
     end;
 
     impure function get_logger return logger_t is
     begin
-      return p_axi_slave.p_logger;
+      return get_logger(p_axi_slave.p_std_vc_cfg);
     end;
 
     impure function fail_on_unexpected_msg_type return boolean is
     begin
-      return p_axi_slave.p_fail_on_unexpected_msg_type;
+      return fail_on_unexpected_msg_type(p_axi_slave.p_std_vc_cfg);
     end;
 
     procedure set_address_fifo_depth(depth : positive) is
@@ -307,8 +308,8 @@ package body axi_slave_private_pkg is
       burst.index := get(p_id_indexes, burst.id);
       set(p_id_indexes, burst.id, burst.index + 1);
 
-      if is_visible(p_axi_slave.p_logger, debug) then
-        debug(p_axi_slave.p_logger,
+      if is_visible(get_logger(p_axi_slave), debug) then
+        debug(get_logger(p_axi_slave),
               "Got " & description & " " & describe_burst(burst) &
               LF & ax & "id    = 0x" & to_hstring(axid) &
               LF & ax & "addr  = 0x" & to_hstring(axaddr) &
@@ -340,13 +341,13 @@ package body axi_slave_private_pkg is
     impure function pop_burst return axi_burst_t is
       constant burst : axi_burst_t := pop_axi_burst(p_burst_queue);
     begin
-      if is_visible(p_axi_slave.p_logger, debug) then
+      if is_visible(get_logger(p_axi_slave), debug) then
         case p_axi_slave_type is
           when write_slave =>
-            debug(p_axi_slave.p_logger,
+            debug(get_logger(p_axi_slave),
                   "Start accepting data for write burst " & describe_burst(burst));
           when read_slave =>
-            debug(p_axi_slave.p_logger,
+            debug(get_logger(p_axi_slave),
                   "Start providing data for read burst " & describe_burst(burst));
         end case;
       end if;
@@ -378,8 +379,8 @@ package body axi_slave_private_pkg is
     impure function pop_resp return axi_burst_t is
       constant resp_burst : axi_burst_t := pop_axi_burst(p_resp_queue);
     begin
-      if is_visible(p_axi_slave.p_logger, debug) then
-        debug(p_axi_slave.p_logger,
+      if is_visible(get_logger(p_axi_slave), debug) then
+        debug(get_logger(p_axi_slave),
               "Providing write response for burst " & describe_burst(resp_burst));
       end if;
       p_resp_queue_length := p_resp_queue_length - 1;
@@ -388,13 +389,13 @@ package body axi_slave_private_pkg is
 
     procedure finish_burst(burst : axi_burst_t) is
     begin
-      if is_visible(p_axi_slave.p_logger, debug) then
+      if is_visible(get_logger(p_axi_slave), debug) then
         case p_axi_slave_type is
           when write_slave =>
-            debug(p_axi_slave.p_logger,
+            debug(get_logger(p_axi_slave),
                   "Accepted last data for write burst " & describe_burst(burst));
           when read_slave =>
-            debug(p_axi_slave.p_logger,
+            debug(get_logger(p_axi_slave),
                   "Providing last data for read burst " & describe_burst(burst));
         end case;
       end if;
@@ -436,7 +437,7 @@ package body axi_slave_private_pkg is
 
     procedure fail(msg : string) is
     begin
-      check_failed(p_axi_slave.p_checker, msg, failure);
+      check_failed(get_checker(p_axi_slave), msg, failure);
     end;
 
     procedure check_4kbyte_boundary(burst : axi_burst_t) is
@@ -587,6 +588,6 @@ package body axi_slave_private_pkg is
       return resp_to_string(resp) & "(" & to_string(resp) & ")";
     end;
   begin
-    check(bus_handle.p_checker, got = expected, result("for " & msg & " - Got AXI response "  & describe(got) & " expected " & describe(expected)), failure);
+    check(get_checker(bus_handle), got = expected, result("for " & msg & " - Got AXI response "  & describe(got) & " expected " & describe(expected)), failure);
   end;
 end package body;

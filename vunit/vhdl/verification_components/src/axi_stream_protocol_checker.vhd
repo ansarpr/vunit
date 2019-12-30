@@ -13,6 +13,7 @@ use std.textio.all;
 context work.vunit_context;
 context work.com_context;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 use work.axi_stream_pkg.all;
 
 entity axi_stream_protocol_checker is
@@ -39,13 +40,9 @@ architecture a of axi_stream_protocol_checker is
   impure function create_checkers(n_rules : positive) return checker_vec_t is
     variable checkers : checker_vec_t(1 to n_rules);
   begin
-    if protocol_checker.p_checker = null_checker then
-      for rule in 1 to n_rules loop
-        checkers(rule) := new_checker(get_name(protocol_checker.p_logger) & ":rule " & to_string(rule));
-      end loop;
-    else
-      checkers := (others => protocol_checker.p_checker);
-    end if;
+    for rule in 1 to n_rules loop
+      checkers(rule) := new_checker(get_name(get_logger(protocol_checker.p_std_vc_cfg)) & ":rule " & to_string(rule));
+    end loop;
 
     return checkers;
   end;
@@ -93,7 +90,7 @@ begin
       end loop;
     end;
   begin
-    receive(net, protocol_checker.p_actor, request_msg);
+    receive(net, get_actor(protocol_checker.p_std_vc_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     handle_wait_for_time(net, msg_type, request_msg);
@@ -101,8 +98,8 @@ begin
     if msg_type = wait_until_idle_msg then
       wait_until_all_streams_have_completed;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif protocol_checker.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, protocol_checker.p_logger);
+    elsif fail_on_unexpected_msg_type(protocol_checker.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_logger(protocol_checker.p_std_vc_cfg));
     end if;
   end process;
 

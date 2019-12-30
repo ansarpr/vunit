@@ -10,46 +10,50 @@ use ieee.numeric_std.all;
 
 use work.queue_pkg.all;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 use work.queue_pkg.all;
 use work.check_pkg.all;
 
 package body bus_master_pkg is
 
-  impure function new_bus(data_length : natural;
-                          address_length : natural;
-                          byte_length : natural := 8;
-                          logger : logger_t := bus_logger;
-                          actor : actor_t := null_actor;
-                          checker : checker_t := null_checker;
-                          fail_on_unexpected_msg_type : boolean := true) return bus_master_t is
-    variable p_actor : actor_t;
-    variable p_checker : checker_t;
+  impure function new_bus(data_length                 : natural;
+                          address_length              : natural;
+                          byte_length                 : natural   := 8;
+                          logger                      : logger_t  := bus_logger;
+                          actor                       : actor_t   := null_actor;
+                          checker                     : checker_t := null_checker;
+                          fail_on_unexpected_msg_type : boolean   := true) return bus_master_t is
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      bus_logger, bus_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
   begin
-    p_actor := actor when actor /= null_actor else new_actor;
-
-    if checker = null_checker then
-      if logger = bus_logger then
-        p_checker := bus_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
-    return (p_actor => p_actor,
+    return (p_actor => get_actor(p_std_vc_cfg),
             p_data_length => data_length,
             p_address_length => address_length,
             p_byte_length => byte_length,
-            p_logger => logger,
-            p_checker => p_checker,
-            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type);
+            p_logger => get_logger(p_std_vc_cfg),
+            p_checker => get_checker(p_std_vc_cfg),
+            p_fail_on_unexpected_msg_type => work.vc_pkg.fail_on_unexpected_msg_type(p_std_vc_cfg));
+  end;
 
+  function get_actor(bus_handle : bus_master_t) return actor_t is
+  begin
+    return bus_handle.p_actor;
   end;
 
   function get_logger(bus_handle : bus_master_t) return logger_t is
   begin
     return bus_handle.p_logger;
+  end;
+
+  function get_checker(bus_handle : bus_master_t) return checker_t is
+  begin
+    return bus_handle.p_checker;
+  end;
+
+  function fail_on_unexpected_msg_type(bus_handle : bus_master_t) return boolean is
+  begin
+    return bus_handle.p_fail_on_unexpected_msg_type;
   end;
 
   impure function data_length(bus_handle : bus_master_t) return natural is
@@ -101,7 +105,7 @@ package body bus_master_pkg is
     end if;
     push_std_ulogic_vector(request_msg, full_byte_enable);
 
-    send(net, bus_handle.p_actor, request_msg);
+    send(net, get_actor(bus_handle), request_msg);
   end procedure;
 
   procedure write_bus(signal net : inout network_t;
@@ -130,7 +134,7 @@ package body bus_master_pkg is
       full_data(bus_handle.p_data_length-1 downto 0) := pop(data);
       push_std_ulogic_vector(request_msg, full_data);
     end loop;
-    send(net, bus_handle.p_actor, request_msg);
+    send(net, get_actor(bus_handle), request_msg);
   end procedure;
 
   procedure burst_write_bus(signal net : inout network_t;
@@ -169,7 +173,7 @@ package body bus_master_pkg is
 
     read_bus(net, bus_handle, address, data);
     if not std_match(data, edata) then
-      failure(bus_handle.p_logger, base_error);
+      failure(get_logger(bus_handle), base_error);
     end if;
   end procedure;
 
@@ -193,7 +197,7 @@ package body bus_master_pkg is
     request_msg := new_msg(bus_read_msg);
     full_address(address'length-1 downto 0) := address;
     push_std_ulogic_vector(request_msg, full_address);
-    send(net, bus_handle.p_actor, request_msg);
+    send(net, get_actor(bus_handle), request_msg);
   end procedure;
 
   procedure read_bus(signal net : inout network_t;
@@ -216,7 +220,7 @@ package body bus_master_pkg is
     full_address(address'length-1 downto 0) := address;
     push_std_ulogic_vector(request_msg, full_address);
     push_integer(request_msg, burst_length);
-    send(net, bus_handle.p_actor, request_msg);
+    send(net, get_actor(bus_handle), request_msg);
   end procedure;
 
   procedure burst_read_bus(signal net : inout network_t;
@@ -322,9 +326,9 @@ package body bus_master_pkg is
     end loop;
 
     if msg = "" then
-      failure(bus_handle.p_logger, "Timeout");
+      failure(get_logger(bus_handle), "Timeout");
     else
-      failure(bus_handle.p_logger, msg);
+      failure(get_logger(bus_handle), msg);
     end if;
   end;
 
@@ -345,13 +349,13 @@ package body bus_master_pkg is
 
   impure function as_sync(bus_master : bus_master_t) return sync_handle_t is
   begin
-    return bus_master.p_actor;
+    return get_actor(bus_master);
   end;
 
   procedure wait_until_idle(signal net : inout network_t;
                             bus_handle : bus_master_t) is
   begin
-    wait_until_idle(net, bus_handle.p_actor);
+    wait_until_idle(net, get_actor(bus_handle));
   end;
 
 end package body;

@@ -55,7 +55,7 @@ begin
     variable request_msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, bus_handle.p_actor, request_msg);
+    receive(net, get_actor(bus_handle), request_msg);
     msg_type := message_type(request_msg);
 
     handle_wait_for_time(net, msg_type, request_msg);
@@ -68,8 +68,8 @@ begin
         wait until rising_edge(aclk) and is_empty(transaction_token_queue);
       end if;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif bus_handle.p_fail_on_unexpected_msg_type then
-      unexpected_msg_type(msg_type, bus_handle.p_logger);
+    elsif fail_on_unexpected_msg_type(bus_handle) then
+      unexpected_msg_type(msg_type, get_logger(bus_handle));
     end if;
   end process;
 
@@ -101,8 +101,8 @@ begin
       check_axi_resp(bus_handle, rresp, expected_resp, "rresp");
       transaction_token := pop(transaction_token_queue);
 
-      if is_visible(bus_handle.p_logger, debug) then
-        debug(bus_handle.p_logger,
+      if is_visible(get_logger(bus_handle), debug) then
+        debug(get_logger(bus_handle),
               "Read 0x" & to_hstring(rdata) &
                 " from address 0x" & to_hstring(araddr));
       end if;
@@ -139,8 +139,8 @@ begin
       check_axi_resp(bus_handle, bresp, expected_resp, "bresp");
       transaction_token := pop(transaction_token_queue);
 
-      if is_visible(bus_handle.p_logger, debug) then
-        debug(bus_handle.p_logger,
+      if is_visible(get_logger(bus_handle), debug) then
+        debug(get_logger(bus_handle),
               "Wrote 0x" & to_hstring(wdata) &
                 " to address 0x" & to_hstring(awaddr));
       end if;

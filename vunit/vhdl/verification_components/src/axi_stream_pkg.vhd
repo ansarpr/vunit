@@ -13,37 +13,31 @@ use work.check_pkg.all;
 use work.stream_master_pkg.all;
 use work.stream_slave_pkg.all;
 use work.sync_pkg.all;
+use work.vc_pkg.all;
 context work.vunit_context;
 context work.com_context;
 context work.data_types_context;
 
 package axi_stream_pkg is
-
   type axi_stream_component_type_t is (null_component, default_component, custom_component);
 
   type axi_stream_protocol_checker_t is record
-    p_type                        : axi_stream_component_type_t;
-    p_actor                       : actor_t;
-    p_data_length                 : natural;
-    p_id_length                   : natural;
-    p_dest_length                 : natural;
-    p_user_length                 : natural;
-    p_logger                      : logger_t;
-    p_checker                     : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
-    p_max_waits                   : natural;
+    p_std_vc_cfg  : std_vc_cfg_t;
+    p_type        : axi_stream_component_type_t;
+    p_data_length : natural;
+    p_id_length   : natural;
+    p_dest_length : natural;
+    p_user_length : natural;
+    p_max_waits   : natural;
   end record;
 
   constant null_axi_stream_protocol_checker : axi_stream_protocol_checker_t := (
+    p_std_vc_cfg                  => null_std_vc_cfg,
     p_type                        => null_component,
-    p_actor                       => null_actor,
     p_data_length                 => 0,
     p_id_length                   => 0,
     p_dest_length                 => 0,
     p_user_length                 => 0,
-    p_logger                      => null_logger,
-    p_checker                     => null_checker,
-    p_fail_on_unexpected_msg_type => false,
     p_max_waits                   => 0
   );
 
@@ -51,41 +45,32 @@ package axi_stream_pkg is
   -- configuration is defined by the parent component into which the checker is
   -- instantiated.
   constant default_axi_stream_protocol_checker : axi_stream_protocol_checker_t := (
+    p_std_vc_cfg                  => null_std_vc_cfg,
     p_type                        => default_component,
-    p_actor                       => null_actor,
     p_data_length                 => 0,
     p_id_length                   => 0,
     p_dest_length                 => 0,
     p_user_length                 => 0,
-    p_logger                      => null_logger,
-    p_checker                     => null_checker,
-    p_fail_on_unexpected_msg_type => false,
     p_max_waits                   => 0
   );
 
   type axi_stream_monitor_t is record
+    p_std_vc_cfg  : std_vc_cfg_t;
     p_type                        : axi_stream_component_type_t;
-    p_actor                       : actor_t;
     p_data_length                 : natural;
     p_id_length                   : natural;
     p_dest_length                 : natural;
     p_user_length                 : natural;
-    p_logger                      : logger_t;
-    p_checker                     : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
     p_protocol_checker            : axi_stream_protocol_checker_t;
   end record;
 
   constant null_axi_stream_monitor : axi_stream_monitor_t := (
+    p_std_vc_cfg                  => null_std_vc_cfg,
     p_type                        => null_component,
-    p_actor                       => null_actor,
     p_data_length                 => 0,
     p_id_length                   => 0,
     p_dest_length                 => 0,
     p_user_length                 => 0,
-    p_logger                      => null_logger,
-    p_checker                     => null_checker,
-    p_fail_on_unexpected_msg_type => false,
     p_protocol_checker            => null_axi_stream_protocol_checker
   );
 
@@ -93,20 +78,17 @@ package axi_stream_pkg is
   -- configuration is defined by the parent component into which the monitor is
   -- instantiated.
   constant default_axi_stream_monitor : axi_stream_monitor_t := (
+    p_std_vc_cfg                  => null_std_vc_cfg,
     p_type                        => default_component,
-    p_actor                       => null_actor,
     p_data_length                 => 0,
     p_id_length                   => 0,
     p_dest_length                 => 0,
     p_user_length                 => 0,
-    p_logger                      => null_logger,
-    p_checker                     => null_checker,
-    p_fail_on_unexpected_msg_type => false,
     p_protocol_checker            => null_axi_stream_protocol_checker
   );
 
   type axi_stream_master_t is record
-    p_actor                       : actor_t;
+    p_std_vc_cfg  : std_vc_cfg_t;
     p_data_length                 : natural;
     p_id_length                   : natural;
     p_dest_length                 : natural;
@@ -114,23 +96,17 @@ package axi_stream_pkg is
     p_drive_invalid               : boolean;
     p_drive_invalid_val           : std_logic;
     p_drive_invalid_val_user      : std_logic;
-    p_logger                      : logger_t;
-    p_checker                     : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
     p_monitor                     : axi_stream_monitor_t;
     p_use_default_monitor         : boolean;
     p_protocol_checker            : axi_stream_protocol_checker_t;
   end record;
 
   type axi_stream_slave_t is record
-    p_actor                       : actor_t;
+    p_std_vc_cfg  : std_vc_cfg_t;
     p_data_length                 : natural;
     p_id_length                   : natural;
     p_dest_length                 : natural;
     p_user_length                 : natural;
-    p_logger                      : logger_t;
-    p_checker                     : checker_t;
-    p_fail_on_unexpected_msg_type : boolean;
     p_monitor                     : axi_stream_monitor_t;
     p_use_default_monitor         : boolean;
     p_protocol_checker            : axi_stream_protocol_checker_t;
@@ -322,7 +298,6 @@ package axi_stream_pkg is
 end package;
 
 package body axi_stream_pkg is
-
   impure function get_valid_monitor(
     data_length      : natural;
     id_length        : natural  := 0;
@@ -390,39 +365,26 @@ package body axi_stream_pkg is
     monitor                     : axi_stream_monitor_t          := null_axi_stream_monitor;
     protocol_checker            : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
   ) return axi_stream_master_t is
-    variable p_actor            : actor_t;
-    variable p_checker          : checker_t;
+    constant p_std_vc_cfg       : std_vc_cfg_t := create_std_vc_cfg(
+      axi_stream_logger, axi_stream_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
     variable p_monitor          : axi_stream_monitor_t;
     variable p_protocol_checker : axi_stream_protocol_checker_t;
   begin
     p_monitor          := get_valid_monitor(data_length, id_length, dest_length, user_length, logger, actor, checker, monitor, "master");
-    p_actor            := actor when actor /= null_actor else new_actor;
     p_protocol_checker := get_valid_protocol_checker(data_length, id_length, dest_length, user_length, logger, actor, checker, protocol_checker, "master");
 
-    if checker = null_checker then
-      if logger = axi_stream_logger then
-        p_checker := axi_stream_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
-    return (p_actor                       => p_actor,
-            p_data_length                 => data_length,
-            p_id_length                   => id_length,
-            p_dest_length                 => dest_length,
-            p_user_length                 => user_length,
-            p_drive_invalid               => drive_invalid,
-            p_drive_invalid_val           => drive_invalid_val,
-            p_drive_invalid_val_user      => drive_invalid_val_user,
-            p_logger                      => logger,
-            p_checker                     => p_checker,
-            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type,
-            p_monitor                     => p_monitor,
-            p_use_default_monitor         => monitor = default_axi_stream_monitor,
-            p_protocol_checker            => p_protocol_checker);
+    return (p_std_vc_cfg             => p_std_vc_cfg,
+            p_data_length            => data_length,
+            p_id_length              => id_length,
+            p_dest_length            => dest_length,
+            p_user_length            => user_length,
+            p_drive_invalid          => drive_invalid,
+            p_drive_invalid_val      => drive_invalid_val,
+            p_drive_invalid_val_user => drive_invalid_val_user,
+            p_monitor                => p_monitor,
+            p_use_default_monitor    => monitor = default_axi_stream_monitor,
+            p_protocol_checker       => p_protocol_checker);
   end;
 
   impure function new_axi_stream_slave(
@@ -437,36 +399,23 @@ package body axi_stream_pkg is
     monitor                     : axi_stream_monitor_t          := null_axi_stream_monitor;
     protocol_checker            : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
   ) return axi_stream_slave_t is
-    variable p_actor            : actor_t;
-    variable p_checker          : checker_t;
+    constant p_std_vc_cfg       : std_vc_cfg_t := create_std_vc_cfg(
+      axi_stream_logger, axi_stream_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
     variable p_monitor          : axi_stream_monitor_t;
     variable p_protocol_checker : axi_stream_protocol_checker_t;
   begin
     p_monitor          := get_valid_monitor(data_length, id_length, dest_length, user_length, logger, actor, checker, monitor, "slave");
-    p_actor            := actor when actor /= null_actor else new_actor;
     p_protocol_checker := get_valid_protocol_checker(data_length, id_length, dest_length, user_length, logger, actor, checker, protocol_checker, "slave");
 
-    if checker = null_checker then
-      if logger = axi_stream_logger then
-        p_checker := axi_stream_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
-    return (p_actor                       => p_actor,
-            p_data_length                 => data_length,
-            p_id_length                   => id_length,
-            p_dest_length                 => dest_length,
-            p_user_length                 => user_length,
-            p_logger                      => logger,
-            p_checker                     => p_checker,
-            p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type,
-            p_monitor                     => p_monitor,
-            p_use_default_monitor         => monitor = default_axi_stream_monitor,
-            p_protocol_checker            => p_protocol_checker);
+    return (p_std_vc_cfg          => p_std_vc_cfg,
+            p_data_length         => data_length,
+            p_id_length           => id_length,
+            p_dest_length         => dest_length,
+            p_user_length         => user_length,
+            p_monitor             => p_monitor,
+            p_use_default_monitor => monitor = default_axi_stream_monitor,
+            p_protocol_checker    => p_protocol_checker);
   end;
 
   impure function new_axi_stream_monitor(
@@ -480,32 +429,21 @@ package body axi_stream_pkg is
     fail_on_unexpected_msg_type : boolean                       := true;
     protocol_checker            : axi_stream_protocol_checker_t := null_axi_stream_protocol_checker
   ) return axi_stream_monitor_t is
-    variable p_checker          : checker_t;
     constant p_protocol_checker : axi_stream_protocol_checker_t := get_valid_protocol_checker(
       data_length, id_length, dest_length, user_length, logger, actor, checker, protocol_checker, "monitor"
     );
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      axi_stream_logger, axi_stream_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
   begin
-    if checker = null_checker then
-      if logger = axi_stream_logger then
-        p_checker := axi_stream_checker;
-      else
-        p_checker := new_checker(logger);
-      end if;
-    else
-      p_checker := checker;
-    end if;
-
     return (
-      p_type                        => custom_component,
-      p_actor                       => actor,
-      p_data_length                 => data_length,
-      p_id_length                   => id_length,
-      p_dest_length                 => dest_length,
-      p_user_length                 => user_length,
-      p_logger                      => logger,
-      p_checker                     => p_checker,
-      p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type,
-      p_protocol_checker            => p_protocol_checker);
+      p_std_vc_cfg       => p_std_vc_cfg,
+      p_type             => custom_component,
+      p_data_length      => data_length,
+      p_id_length        => id_length,
+      p_dest_length      => dest_length,
+      p_user_length      => user_length,
+      p_protocol_checker => p_protocol_checker);
   end;
 
   impure function new_axi_stream_protocol_checker(
@@ -519,21 +457,18 @@ package body axi_stream_pkg is
     fail_on_unexpected_msg_type : boolean   := true;
     max_waits                   : natural   := 16
   ) return axi_stream_protocol_checker_t is
-    variable p_actor : actor_t;
+    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+      axi_stream_logger, axi_stream_checker, actor, logger, checker, fail_on_unexpected_msg_type
+    );
   begin
-    p_actor := actor when actor /= null_actor else new_actor;
-
     return (
-      p_type                        => custom_component,
-      p_actor                       => p_actor,
-      p_data_length                 => data_length,
-      p_id_length                   => id_length,
-      p_dest_length                 => dest_length,
-      p_user_length                 => user_length,
-      p_logger                      => logger,
-      p_checker                     => checker,
-      p_fail_on_unexpected_msg_type => fail_on_unexpected_msg_type,
-      p_max_waits                   => max_waits);
+      p_std_vc_cfg  => p_std_vc_cfg,
+      p_type        => custom_component,
+      p_data_length => data_length,
+      p_id_length   => id_length,
+      p_dest_length => dest_length,
+      p_user_length => user_length,
+      p_max_waits   => max_waits);
   end;
 
   impure function data_length(master : axi_stream_master_t) return natural is
@@ -618,32 +553,32 @@ package body axi_stream_pkg is
 
   impure function as_stream(master : axi_stream_master_t) return stream_master_t is
   begin
-    return (p_actor => master.p_actor);
+    return (p_actor => get_actor(master.p_std_vc_cfg));
   end;
 
   impure function as_stream(slave : axi_stream_slave_t) return stream_slave_t is
   begin
-    return (p_actor => slave.p_actor);
+    return (p_actor => get_actor(slave.p_std_vc_cfg));
   end;
 
   impure function as_sync(master : axi_stream_master_t) return sync_handle_t is
   begin
-    return master.p_actor;
+    return get_actor(master.p_std_vc_cfg);
   end;
 
   impure function as_sync(slave : axi_stream_slave_t) return sync_handle_t is
   begin
-    return slave.p_actor;
+    return get_actor(slave.p_std_vc_cfg);
   end;
 
   impure function as_sync(monitor : axi_stream_monitor_t) return sync_handle_t is
   begin
-    return monitor.p_actor;
+    return get_actor(monitor.p_std_vc_cfg);
   end;
 
   impure function as_sync(protocol_checker : axi_stream_protocol_checker_t) return sync_handle_t is
   begin
-    return protocol_checker.p_actor;
+    return get_actor(protocol_checker.p_std_vc_cfg);
   end;
 
   procedure push_axi_stream(
@@ -678,7 +613,7 @@ package body axi_stream_pkg is
     push_std_ulogic_vector(msg, normalized_dest);
     normalized_user(tuser'length - 1 downto 0) := tuser;
     push_std_ulogic_vector(msg, normalized_user);
-    send(net, axi_stream.p_actor, msg);
+    send(net, get_actor(axi_stream.p_std_vc_cfg), msg);
   end;
 
   procedure pop_axi_stream(signal net         : inout network_t;
@@ -686,7 +621,7 @@ package body axi_stream_pkg is
                            variable reference : inout axi_stream_reference_t) is
   begin
     reference := new_msg(pop_axi_stream_msg);
-    send(net, axi_stream.p_actor, reference);
+    send(net, get_actor(axi_stream.p_std_vc_cfg), reference);
   end;
 
   procedure await_pop_axi_stream_reply(
@@ -836,7 +771,7 @@ package body axi_stream_pkg is
         normalized_user(tuser'length - 1 downto 0) := tuser;
         push_std_ulogic_vector(check_msg, normalized_user);
       end if;
-      send(net, axi_stream.p_actor, check_msg);
+      send(net, get_actor(axi_stream.p_std_vc_cfg), check_msg);
     end if;
   end procedure;
 

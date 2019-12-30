@@ -604,7 +604,7 @@ begin
       check_equal(now - t_start, 6 ns);
 
     elsif run("Test unexpected message handling") then
-      mock(custom_logger);
+      mock(custom_logger, failure);
       msg := new_msg(unexpected_msg);
       send(net, custom_actor, msg);
       wait for 1 ns;

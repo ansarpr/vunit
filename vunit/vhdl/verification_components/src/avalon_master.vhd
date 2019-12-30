@@ -67,9 +67,9 @@ begin
     wait until rising_edge(clk);
     loop
       request_msg := null_msg;
-      msgs := num_of_messages(bus_handle.p_actor);
+      msgs := num_of_messages(get_actor(bus_handle));
       if (msgs > 0) then
-        receive(net, bus_handle.p_actor, request_msg);
+        receive(net, get_actor(bus_handle), request_msg);
         msg_type := message_type(request_msg);
         if msg_type = bus_read_msg then
           while rnd.Uniform(0.0, 1.0) > read_high_probability loop
