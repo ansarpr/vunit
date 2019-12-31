@@ -169,6 +169,11 @@ ComplianceTest(lib, "uart_master", "uart_pkg").add_vhdl_testbench(
 ComplianceTest(lib, "uart_slave", "uart_pkg").add_vhdl_testbench(
     test_lib, join(root, "compliance_test"),
 )
+ComplianceTest(lib, "wishbone_slave", "wishbone_pkg").add_vhdl_testbench(
+    test_lib,
+    join(root, "compliance_test"),
+    join(root, ".vc", "tb_wishbone_slave_compliance_template.vhd"),
+)
 ui.set_compile_option("rivierapro.vcom_flags", ["-dbg"])
 
 ui.main()

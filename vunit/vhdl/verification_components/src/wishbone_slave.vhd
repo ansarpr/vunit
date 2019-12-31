@@ -17,6 +17,8 @@ context work.vunit_context;
 context work.com_context;
 use work.memory_pkg.all;
 use work.wishbone_pkg.all;
+use work.sync_pkg.all;
+use work.vc_pkg.all;
 
 library osvvm;
 use osvvm.RandomPkg.all;
@@ -40,7 +42,6 @@ entity wishbone_slave is
 end entity;
 
 architecture a of wishbone_slave is
-
   constant slave_write_msg  : msg_type_t := new_msg_type("wb slave write");
   constant slave_read_msg   : msg_type_t := new_msg_type("wb slave read");
 
@@ -63,7 +64,6 @@ begin
       unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_vc_cfg));
     end if;
   end process;
-
 
   request : process
     variable wr_request_msg : msg_t;
@@ -92,7 +92,9 @@ begin
     variable rnd : RandomPType;
   begin
     ack <= '0';
+    active_transaction <= false;
     receive(net, wishbone_slave.p_ack_actor, request_msg);
+    active_transaction <= true;
     msg_type := message_type(request_msg);
 
     if msg_type = slave_write_msg then

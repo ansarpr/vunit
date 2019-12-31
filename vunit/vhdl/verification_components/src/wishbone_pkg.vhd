@@ -9,19 +9,21 @@ use ieee.std_logic_1164.all;
 
 use work.queue_pkg.all;
 use work.logger_pkg.all;
+use work.checker_pkg.all;
 use work.memory_pkg.all;
+use work.sync_pkg.all;
+use work.vc_pkg.all;
 context work.com_context;
 
 package wishbone_pkg is
 
   type wishbone_slave_t is record
-    ack_high_probability : real range 0.0 to 1.0;
+    ack_high_probability   : real range 0.0 to 1.0;
     stall_high_probability : real range 0.0 to 1.0;
     -- Private
-    p_actor : actor_t;
-    p_ack_actor : actor_t;
-    p_memory : memory_t;
-    p_logger : logger_t;
+    p_std_vc_cfg           : std_vc_cfg_t;
+    p_ack_actor            : actor_t;
+    p_memory               : memory_t;
   end record;
 
   constant wishbone_slave_logger : logger_t := get_logger("vunit_lib:wishbone_slave_pkg");
@@ -57,13 +59,17 @@ package body wishbone_pkg is
     );
 
   begin
-    return (p_actor => new_actor,
+    return (p_std_vc_cfg => p_std_vc_cfg,
             p_ack_actor => new_actor,
             p_memory => to_vc_interface(memory, logger),
-            p_logger => logger,
             ack_high_probability => ack_high_probability,
             stall_high_probability => stall_high_probability
         );
+  end;
+
+  impure function as_sync(slave : wishbone_slave_t) return sync_handle_t is
+  begin
+    return get_actor(slave.p_std_vc_cfg);
   end;
 
 end package body;
