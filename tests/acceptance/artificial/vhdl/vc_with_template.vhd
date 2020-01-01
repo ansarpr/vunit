@@ -8,6 +8,7 @@ library vunit_lib;
 context vunit_lib.vunit_context;
 context vunit_lib.com_context;
 context vunit_lib.vc_context;
+use vunit_lib.vc_pkg.all;
 
 library ieee;
 use ieee.std_logic_1164.all;

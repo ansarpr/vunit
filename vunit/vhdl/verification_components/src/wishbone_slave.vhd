@@ -120,8 +120,8 @@ begin
       wait until rising_edge(clk);
       ack <= '0';
 
-    else
-      unexpected_msg_type(msg_type);
+    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_vc_cfg) then
+      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_vc_cfg));
     end if;
   end process;
 

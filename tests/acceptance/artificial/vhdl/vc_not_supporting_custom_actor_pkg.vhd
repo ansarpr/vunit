@@ -8,6 +8,7 @@ library vunit_lib;
 context vunit_lib.vunit_context;
 context vunit_lib.com_context;
 context vunit_lib.vc_context;
+use vunit_lib.vc_pkg.all;
 
 package vc_not_supporting_custom_actor_pkg is
   type vc_not_supporting_custom_actor_handle_t is record

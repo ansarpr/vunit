@@ -8,6 +8,7 @@ library vunit_lib;
 context vunit_lib.vunit_context;
 context vunit_lib.com_context;
 context vunit_lib.vc_context;
+use vunit_lib.vc_pkg.all;
 
 package vc_pkg_with_template is
   type vc_handle_t is record

@@ -8,6 +8,7 @@ library vunit_lib;
 context vunit_lib.vunit_context;
 context vunit_lib.com_context;
 context vunit_lib.vc_context;
+use vunit_lib.vc_pkg.all;
 
 package vc_pkg is
   type vc_handle_t is record
@@ -40,7 +41,6 @@ package body vc_pkg is
     constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
       vc_logger, vc_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
-
   begin
     return (p_std_vc_cfg => p_std_vc_cfg);
   end;
