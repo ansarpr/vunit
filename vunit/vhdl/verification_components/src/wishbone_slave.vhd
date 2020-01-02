@@ -101,7 +101,7 @@ begin
       addr := pop_integer(request_msg);
       data := pop_std_ulogic_vector(request_msg);
       write_word(wishbone_slave.p_memory, addr, data);
-      while rnd.Uniform(0.0, 1.0) > wishbone_slave.ack_high_probability loop
+      while rnd.Uniform(0.0, 1.0) > wishbone_slave.p_ack_high_probability loop
         wait until rising_edge(clk);
       end loop;
       ack <= '1';
@@ -112,7 +112,7 @@ begin
       data := (others => '0');
       addr := pop_integer(request_msg);
       data := read_word(wishbone_slave.p_memory, addr, sel'length);
-      while rnd.Uniform(0.0, 1.0) > wishbone_slave.ack_high_probability loop
+      while rnd.Uniform(0.0, 1.0) > wishbone_slave.p_ack_high_probability loop
         wait until rising_edge(clk);
       end loop;
       dat_o <= data;
@@ -128,7 +128,7 @@ begin
   stall_stim: process
     variable rnd : RandomPType;
   begin
-    if rnd.Uniform(0.0, 1.0) < wishbone_slave.stall_high_probability then
+    if rnd.Uniform(0.0, 1.0) < wishbone_slave.p_stall_high_probability then
       stall <= '1';
     else
       stall <= '0';

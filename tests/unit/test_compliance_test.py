@@ -46,6 +46,10 @@ end entity;
 
         self.vci_contents = """
 package vc_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
   impure function new_vc(
     logger : logger_t := default_logger;
     actor : actor_t := null_actor;
@@ -168,6 +172,10 @@ end entity;
     def test_failing_with_no_constructor(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
   impure function create_vc return vc_handle_t;
 end package;
 """
@@ -184,6 +192,10 @@ end package;
     def test_failing_with_wrong_constructor_return_type(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
   impure function new_vc return vc_t;
 end package;
 """
@@ -221,6 +233,10 @@ end package;
             vci_contents = (
                 """\
 package other_vc_%d_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
   impure function new_vc(
 """
                 % iteration
@@ -281,6 +297,59 @@ end package;
             )
             error_mock.assert_called_with(error_msg)
 
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_on_non_private_handle_elements(self, error_mock):
+        vci_contents = """\
+package other_vc_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+    foo : bar_t;
+  end record;
+
+  impure function new_vc(
+    logger : logger_t := default_logger;
+    actor : actor_t := null_actor;
+    checker : checker_t := null_checker;
+    fail_on_unexpected_msg_type : boolean := true
+  ) return vc_handle_t;
+end package;
+"""
+
+        self.vc_lib.add_source_file(
+            self.make_file(join(self.tmp_dir, "other_vci.vhd"), vci_contents)
+        )
+
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
+        error_mock.assert_called_once_with(
+            "%s in %s doesn't start with p_", "foo", "vc_handle_t"
+        )
+
+    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    def test_failing_on_missing_handle_record(self, error_mock):
+        vci_contents = """\
+package other_vc_pkg is
+  type handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
+  impure function new_vc(
+    logger : logger_t := default_logger;
+    actor : actor_t := null_actor;
+    checker : checker_t := null_checker;
+    fail_on_unexpected_msg_type : boolean := true
+  ) return vc_handle_t;
+end package;
+"""
+
+        self.vc_lib.add_source_file(
+            self.make_file(join(self.tmp_dir, "other_vci.vhd"), vci_contents)
+        )
+
+        self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
+        error_mock.assert_called_once_with(
+            "Failed to find %s record", "vc_handle_t",
+        )
+
     def test_warning_on_missing_default_value(self):
         parameters = dict(
             logger=("logger_t", "default_logger"),
@@ -293,6 +362,10 @@ end package;
             vci_contents = (
                 """\
 package other_vc_%d_pkg is
+  type vc_handle_t is record
+    p_std_vc_cfg : std_vc_cfg_t;
+  end record;
+
   impure function new_vc(
 """
                 % iteration

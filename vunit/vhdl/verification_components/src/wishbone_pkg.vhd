@@ -22,12 +22,12 @@ package wishbone_pkg is
   end record;
 
   type wishbone_slave_t is record
-    ack_high_probability   : real range 0.0 to 1.0;
-    stall_high_probability : real range 0.0 to 1.0;
     -- Private
-    p_std_vc_cfg           : std_vc_cfg_t;
-    p_ack_actor            : actor_t;
-    p_memory               : memory_t;
+    p_std_vc_cfg             : std_vc_cfg_t;
+    p_ack_high_probability   : real range 0.0 to 1.0;
+    p_stall_high_probability : real range 0.0 to 1.0;
+    p_ack_actor              : actor_t;
+    p_memory                 : memory_t;
   end record;
 
   constant wishbone_logger : logger_t := get_logger("vunit_lib:wishbone_pkg");
@@ -192,8 +192,8 @@ package body wishbone_pkg is
     return (p_std_vc_cfg => p_std_vc_cfg,
             p_ack_actor => new_actor,
             p_memory => to_vc_interface(memory, logger),
-            ack_high_probability => ack_high_probability,
-            stall_high_probability => stall_high_probability
+            p_ack_high_probability => ack_high_probability,
+            p_stall_high_probability => stall_high_probability
         );
   end;
 

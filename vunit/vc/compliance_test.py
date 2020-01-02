@@ -21,6 +21,7 @@ from vunit.vhdl_parser import (
     VHDLFunctionSpecification,
     find_closing_delimiter,
     remove_comments,
+    VHDLRecordType,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -168,12 +169,39 @@ class ComplianceTest(object):
                     step += 1
 
                 if step == len(messages) + 1:
-                    return func, parameters_missing_default_value, None
+                    for parameter_name in parameters_missing_default_value:
+                        LOGGER.warning(
+                            "%s parameter in %s is missing a default value",
+                            parameter_name,
+                            func.identifier,
+                        )
+                    return func
 
-            return None, None, messages[message_idx]
+            LOGGER.error(messages[message_idx])
+            return None
+
+        def valid_vc_handle_t(code, vc_handle_t):
+            handle_is_valid = True
+            for record in VHDLRecordType.find(code):
+                if record.identifier == vc_handle_t:
+                    for element in record.elements:
+                        for parameter_name in element.identifier_list:
+                            if not parameter_name.lower().startswith("p_"):
+                                handle_is_valid = False
+                                LOGGER.error(
+                                    "%s in %s doesn't start with p_",
+                                    parameter_name,
+                                    vc_handle_t,
+                                )
+                    return handle_is_valid
+
+            LOGGER.error(
+                "Failed to find %s record", vc_handle_t,
+            )
+            return False
 
         with open(vci_source_file_name) as fptr:
-            code = fptr.read()
+            code = remove_comments(fptr.read())
             vci_code = VHDLDesignFile.parse(code)
             if len(vci_code.packages) != 1:
                 LOGGER.error(
@@ -181,21 +209,9 @@ class ComplianceTest(object):
                 )
                 return None, None
 
-            (
-                vc_constructor,
-                parameters_missing_default_value,
-                error_msg,
-            ) = get_constructor(code)
-
-            if not vc_constructor:
-                LOGGER.error(error_msg)
-            else:
-                for parameter_name in parameters_missing_default_value:
-                    LOGGER.warning(
-                        "%s parameter in %s is missing a default value",
-                        parameter_name,
-                        vc_constructor.identifier,
-                    )
+            vc_constructor = get_constructor(code)
+            if not valid_vc_handle_t(code, vc_handle_t):
+                vc_constructor = None
 
             return vci_code.packages[0], vc_constructor
 
