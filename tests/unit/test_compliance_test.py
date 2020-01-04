@@ -185,7 +185,7 @@ end package;
 
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
         error_mock.assert_called_once_with(
-            "Failed to find constructor function starting with new_"
+            "Failed to find a constructor function for vc_handle_t starting with new_"
         )
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
@@ -205,7 +205,7 @@ end package;
 
         self.assertRaises(SystemExit, ComplianceTest, self.vc_lib, "vc", "other_vc_pkg")
         error_mock.assert_called_once_with(
-            "Found constructor function starting with new_ but not with the correct return type vc_handle_t"
+            "Found constructor function new_vc but not with the correct return type vc_handle_t"
         )
 
     @mock.patch("vunit.vc.compliance_test.LOGGER.error")
@@ -274,17 +274,18 @@ end package;
 
             if invalid_reason == "missing_parameter":
                 error_msg = (
-                    "Found constructor function but the %s parameter is missing"
+                    "Found constructor function new_vc for vc_handle_t but the %s parameter is missing"
                     % invalid_parameter
                 )
             elif invalid_reason == "invalid_type":
                 error_msg = (
-                    "Found constructor function but the %s parameter is not of type %s"
+                    "Found constructor function new_vc for vc_handle_t but the %s parameter is not of type %s"
                     % (invalid_parameter, parameters[invalid_parameter][0])
                 )
             elif invalid_reason == "invalid_default_value":
                 error_msg = (
-                    "Found constructor function but null_%s is the only allowed default value for the %s parameter"
+                    "Found constructor function new_vc for vc_handle_t but null_%s is the only allowed "
+                    "default value for the %s parameter"
                     % (invalid_parameter, invalid_parameter)
                 )
 

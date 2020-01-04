@@ -84,121 +84,141 @@ class ComplianceTest(object):
 
             return vc_code
 
-    @classmethod
-    def _validate_vci(cls, vci_source_file_name, vc_handle_t):
-        """Validates the existence and contents of the verification component interface."""
+    @staticmethod
+    def _validate_constructor(code, vc_handle_t):
+        """Validates the existence and format of the verification component constructor."""
 
         def create_messages(required_parameter_types, expected_default_value):
             messages = [
-                "Failed to find constructor function starting with new_",
-                "Found constructor function starting with new_ but not with the correct return type %s"
-                % (vc_handle_t),
+                "Failed to find a constructor function%s for %s starting with new_",
+                "Found constructor function %s but not with the correct return type %s",
             ]
 
             for parameter_name, parameter_type in required_parameter_types.items():
                 messages.append(
-                    "Found constructor function but the %s parameter is missing"
-                    % (parameter_name)
+                    "Found constructor function %s for %s but the {} parameter is missing".format(
+                        parameter_name
+                    )
                 )
                 messages.append(
-                    "Found constructor function but the %s parameter is not of type %s"
-                    % (parameter_name, parameter_type)
+                    "Found constructor function %s for %s but the {} parameter is not of type {}".format(
+                        parameter_name, parameter_type
+                    )
                 )
                 messages.append(
-                    "Found constructor function but %s is the only allowed default value for the %s parameter"
-                    % (expected_default_value[parameter_name], parameter_name)
+                    "Found constructor function %s for %s but {} is the only allowed default "
+                    "value for the {} parameter".format(
+                        expected_default_value[parameter_name], parameter_name
+                    )
                 )
 
             return messages
 
-        def get_constructor(code):
-            required_parameter_types = dict(
-                logger="logger_t",
-                actor="actor_t",
-                checker="checker_t",
-                fail_on_unexpected_msg_type="boolean",
-            )
+        def log_error_message(function_score, messages):
+            high_score = 0
+            best_function = ""
+            for function_name, score in function_score.items():
+                if score > high_score:
+                    high_score = score
+                    best_function = function_name
 
-            expected_default_value = dict(
-                logger=None,
-                actor="null_actor",
-                checker="null_checker",
-                fail_on_unexpected_msg_type=None,
-            )
+            error_msg = messages[high_score] % (best_function, vc_handle_t)
+            LOGGER.error(error_msg)
 
-            messages = create_messages(required_parameter_types, expected_default_value)
-            message_idx = 0
-            for func in VHDLFunctionSpecification.find(code):
-                if not func.identifier.startswith("new_"):
-                    continue
-                message_idx = max(message_idx, 1)
+        required_parameter_types = dict(
+            logger="logger_t",
+            actor="actor_t",
+            checker="checker_t",
+            fail_on_unexpected_msg_type="boolean",
+        )
 
-                if func.return_type_mark != vc_handle_t:
-                    continue
-                message_idx = max(message_idx, 2)
+        expected_default_value = dict(
+            logger=None,
+            actor="null_actor",
+            checker="null_checker",
+            fail_on_unexpected_msg_type=None,
+        )
 
-                parameters = {}
-                for parameter in func.parameter_list:
-                    for identifier in parameter.identifier_list:
-                        parameters[identifier] = parameter
+        messages = create_messages(required_parameter_types, expected_default_value)
 
-                step = 3
-                parameters_missing_default_value = set()
-                for parameter_name, parameter_type in required_parameter_types.items():
-                    if parameter_name not in parameters:
-                        break
-                    message_idx = max(message_idx, step)
-                    step += 1
+        function_score = {}
+        for func in VHDLFunctionSpecification.find(code):
+            function_score[func.identifier] = 0
 
-                    if (
-                        parameters[parameter_name].subtype_indication.type_mark
-                        != parameter_type
-                    ):
-                        break
-                    message_idx = max(message_idx, step)
-                    step += 1
+            if not func.identifier.startswith("new_"):
+                continue
+            function_score[func.identifier] += 1
 
-                    if not parameters[parameter_name].init_value:
-                        parameters_missing_default_value.add(parameter_name)
-                    elif expected_default_value[parameter_name] and (
-                        parameters[parameter_name].init_value
-                        != expected_default_value[parameter_name]
-                    ):
-                        break
-                    message_idx = max(message_idx, step)
-                    step += 1
+            if func.return_type_mark != vc_handle_t:
+                continue
+            function_score[func.identifier] += 1
 
-                if step == len(messages) + 1:
-                    for parameter_name in parameters_missing_default_value:
-                        LOGGER.warning(
-                            "%s parameter in %s is missing a default value",
-                            parameter_name,
-                            func.identifier,
-                        )
-                    return func
+            parameters = {}
+            for parameter in func.parameter_list:
+                for identifier in parameter.identifier_list:
+                    parameters[identifier] = parameter
 
-            LOGGER.error(messages[message_idx])
-            return None
+            parameters_missing_default_value = set()
+            for parameter_name, parameter_type in required_parameter_types.items():
+                if parameter_name not in parameters:
+                    break
+                function_score[func.identifier] += 1
 
-        def valid_vc_handle_t(code, vc_handle_t):
-            handle_is_valid = True
-            for record in VHDLRecordType.find(code):
-                if record.identifier == vc_handle_t:
-                    for element in record.elements:
-                        for parameter_name in element.identifier_list:
-                            if not parameter_name.lower().startswith("p_"):
-                                handle_is_valid = False
-                                LOGGER.error(
-                                    "%s in %s doesn't start with p_",
-                                    parameter_name,
-                                    vc_handle_t,
-                                )
-                    return handle_is_valid
+                if (
+                    parameters[parameter_name].subtype_indication.type_mark
+                    != parameter_type
+                ):
+                    break
+                function_score[func.identifier] += 1
 
-            LOGGER.error(
-                "Failed to find %s record", vc_handle_t,
-            )
-            return False
+                if not parameters[parameter_name].init_value:
+                    parameters_missing_default_value.add(parameter_name)
+                elif expected_default_value[parameter_name] and (
+                    parameters[parameter_name].init_value
+                    != expected_default_value[parameter_name]
+                ):
+                    break
+                function_score[func.identifier] += 1
+
+            if function_score[func.identifier] == len(messages):
+                for parameter_name in parameters_missing_default_value:
+                    LOGGER.warning(
+                        "%s parameter in %s is missing a default value",
+                        parameter_name,
+                        func.identifier,
+                    )
+                return func
+
+        log_error_message(function_score, messages)
+
+        return None
+
+    @staticmethod
+    def _validate_handle(code, vc_handle_t):
+        """Validates the existence and format of the verification component handle type."""
+
+        handle_is_valid = True
+        for record in VHDLRecordType.find(code):
+            if record.identifier == vc_handle_t:
+                for element in record.elements:
+                    for parameter_name in element.identifier_list:
+                        if not parameter_name.lower().startswith("p_"):
+                            handle_is_valid = False
+                            LOGGER.error(
+                                "%s in %s doesn't start with p_",
+                                parameter_name,
+                                vc_handle_t,
+                            )
+                return handle_is_valid
+
+        LOGGER.error(
+            "Failed to find %s record", vc_handle_t,
+        )
+        return False
+
+    @classmethod
+    def _validate_vci(cls, vci_source_file_name, vc_handle_t):
+        """Validates the existence and contents of the verification component interface."""
 
         with open(vci_source_file_name) as fptr:
             code = remove_comments(fptr.read())
@@ -209,8 +229,8 @@ class ComplianceTest(object):
                 )
                 return None, None
 
-            vc_constructor = get_constructor(code)
-            if not valid_vc_handle_t(code, vc_handle_t):
+            vc_constructor = cls._validate_constructor(code, vc_handle_t)
+            if not cls._validate_handle(code, vc_handle_t):
                 vc_constructor = None
 
             return vci_code.packages[0], vc_constructor
