@@ -184,6 +184,11 @@ ComplianceTest(lib, "std_logic_checker", "signal_checker_pkg").add_vhdl_testbenc
     join(root, "compliance_test"),
     join(root, ".vc", "tb_std_logic_checker_compliance_template.vhd"),
 )
+ComplianceTest(lib, "ram_master", "ram_master_pkg").add_vhdl_testbench(
+    test_lib,
+    join(root, "compliance_test"),
+    join(root, ".vc", "tb_ram_master_compliance_template.vhd"),
+)
 ui.set_compile_option("rivierapro.vcom_flags", ["-dbg"])
 
 ui.main()
