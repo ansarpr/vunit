@@ -12,7 +12,7 @@ use vunit_lib.vc_pkg.all;
 
 package vc_not_supporting_custom_logger_pkg is
   type vc_not_supporting_custom_logger_handle_t is record
-    p_std_vc_cfg : std_vc_cfg_t;
+    p_std_cfg : std_cfg_t;
   end record;
 
   constant vc_not_supporting_custom_logger_logger : logger_t := get_logger("vc_not_supporting_custom_logger");
@@ -38,31 +38,31 @@ package body vc_not_supporting_custom_logger_pkg is
     checker : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean := true
   ) return vc_not_supporting_custom_logger_handle_t is
-    variable p_std_vc_cfg : std_vc_cfg_t;
+    variable p_std_cfg : std_cfg_t;
 
   begin
     if actor = null_actor then
-      p_std_vc_cfg.actor := new_actor;
+      p_std_cfg.actor := new_actor;
     else
-      p_std_vc_cfg.actor := actor;
+      p_std_cfg.actor := actor;
     end if;
 
     if checker = null_checker then
-      p_std_vc_cfg.checker := vc_not_supporting_custom_logger_checker;
+      p_std_cfg.checker := vc_not_supporting_custom_logger_checker;
     else
-      p_std_vc_cfg.checker := checker;
+      p_std_cfg.checker := checker;
     end if;
-    p_std_vc_cfg.logger := vc_not_supporting_custom_logger_logger;
-    p_std_vc_cfg.fail_on_unexpected_msg_type := fail_on_unexpected_msg_type;
+    p_std_cfg.logger := vc_not_supporting_custom_logger_logger;
+    p_std_cfg.fail_on_unexpected_msg_type := fail_on_unexpected_msg_type;
 
-    return (p_std_vc_cfg => p_std_vc_cfg);
+    return (p_std_cfg => p_std_cfg);
   end;
 
   impure function as_sync(
     vc_h : vc_not_supporting_custom_logger_handle_t
   ) return sync_handle_t is
   begin
-    return get_actor(vc_h.p_std_vc_cfg);
+    return get_actor(vc_h.p_std_cfg);
   end;
 
 end package body;

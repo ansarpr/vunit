@@ -21,7 +21,7 @@ package axi_slave_pkg is
 
   type axi_slave_t is record
     -- Private
-    p_std_vc_cfg  : std_vc_cfg_t;
+    p_std_cfg  : std_cfg_t;
     p_initial_address_fifo_depth : positive;
     p_initial_write_response_fifo_depth : positive;
     p_initial_check_4kbyte_boundary : boolean;
@@ -166,11 +166,11 @@ package body axi_slave_pkg is
                                 actor : actor_t := null_actor;
                                 checker : checker_t := null_checker;
                                 fail_on_unexpected_msg_type : boolean := true) return axi_slave_t is
-    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+    constant p_std_cfg : std_cfg_t := create_std_cfg(
       axi_slave_logger, axi_slave_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
   begin
-    return (p_std_vc_cfg => p_std_vc_cfg,
+    return (p_std_cfg => p_std_cfg,
             p_initial_address_fifo_depth => address_fifo_depth,
             p_initial_write_response_fifo_depth => write_response_fifo_depth,
             p_initial_check_4kbyte_boundary => check_4kbyte_boundary,
@@ -184,27 +184,27 @@ package body axi_slave_pkg is
 
   impure function as_sync(axi_slave : axi_slave_t) return sync_handle_t is
   begin
-    return get_actor(axi_slave.p_std_vc_cfg);
+    return get_actor(axi_slave.p_std_cfg);
   end;
 
   function get_actor(axi_slave : axi_slave_t) return actor_t is
   begin
-    return get_actor(axi_slave.p_std_vc_cfg);
+    return get_actor(axi_slave.p_std_cfg);
   end;
 
   function get_logger(axi_slave : axi_slave_t) return logger_t is
   begin
-    return get_logger(axi_slave.p_std_vc_cfg);
+    return get_logger(axi_slave.p_std_cfg);
   end;
 
   function get_checker(axi_slave : axi_slave_t) return checker_t is
   begin
-    return get_checker(axi_slave.p_std_vc_cfg);
+    return get_checker(axi_slave.p_std_cfg);
   end;
 
   function fail_on_unexpected_msg_type(axi_slave : axi_slave_t) return boolean is
   begin
-    return fail_on_unexpected_msg_type(axi_slave.p_std_vc_cfg);
+    return fail_on_unexpected_msg_type(axi_slave.p_std_cfg);
   end;
 
   procedure set_address_fifo_depth(signal net : inout network_t;
@@ -215,7 +215,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_set_address_fifo_depth_msg);
     push(request_msg, depth);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_address_fifo_depth command";
   end;
 
@@ -227,7 +227,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_set_write_response_fifo_depth_msg);
     push(request_msg, depth);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_write_response_fifo_depth command";
   end;
 
@@ -239,7 +239,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_set_address_stall_probability_msg);
     push_real(request_msg, probability);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_address_stall_probability command";
   end;
 
@@ -251,7 +251,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_set_data_stall_probability_msg);
     push_real(request_msg, probability);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_data_stall_probability command";
   end;
 
@@ -262,7 +262,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_set_write_response_stall_probability_msg);
     push_real(request_msg, probability);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_write_response_stall_probability command";
   end;
 
@@ -274,7 +274,7 @@ package body axi_slave_pkg is
   begin
     request_msg := new_msg(axi_slave_configure_4kbyte_boundary_check_msg);
     push_boolean(request_msg, value);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on configure_4kbyte_boundary_check command";
   end;
 
@@ -287,7 +287,7 @@ package body axi_slave_pkg is
     request_msg := new_msg(axi_slave_set_response_latency_msg);
     push_time(request_msg, min_latency);
     push_time(request_msg, max_latency);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on set_response_latency command";
   end;
 
@@ -321,7 +321,7 @@ package body axi_slave_pkg is
     deallocate(stat);
     request_msg := new_msg(axi_slave_get_statistics_msg);
     push_boolean(request_msg, clear);
-    send(net, get_actor(axi_slave.p_std_vc_cfg), request_msg);
+    send(net, get_actor(axi_slave.p_std_cfg), request_msg);
     receive_reply(net, request_msg, reply_msg);
     stat := (p_count_by_burst_length => pop_integer_vector_ptr_ref(reply_msg));
     delete(request_msg);
@@ -334,7 +334,7 @@ package body axi_slave_pkg is
     variable ack : boolean;
   begin
     request_msg := new_msg(axi_slave_enable_well_behaved_check_msg);
-    request(net, get_actor(axi_slave.p_std_vc_cfg), request_msg, ack);
+    request(net, get_actor(axi_slave.p_std_cfg), request_msg, ack);
     assert ack report "Failed on msg_enable_well_behaved_check command";
   end;
 end package body;

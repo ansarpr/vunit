@@ -27,62 +27,54 @@ from vunit.vhdl_parser import (
 LOGGER = logging.getLogger(__name__)
 
 
-class ComplianceTest(object):
-    """
-    Represents the compliance test for a VUnit verification component.
+class VerificationComponentInterface:
+    """Represents a Verification Component Interface (VCI)."""
 
-    :param vc_lib: The :class:`.Library` containing the verification component and its interface.
-    :param vc_name: The name of the verification component entity.
-    :param vci_name: The name of the verification component interface package."""
+    @classmethod
+    def find(cls, vc_lib, vci_name, vc_handle_t):
+        """ Finds the specified VCI if present.
 
-    def __init__(self, vc_lib, vc_name, vci_name):
-        try:
-            self.vc_facade = vc_lib.get_entity(vc_name)
-        except KeyError:
-            LOGGER.error("Failed to find VC %s", vc_name)
-            sys.exit(1)
+        :param vc_lib: Library object containing the VCI.
+        :param vci_name: Name of VCI package.
+        :param vc_handle_t: Name of VC handle type.
 
-        self.vc_code = self._validate_vc(self.vc_facade.source_file.name)
-        if not self.vc_code:
-            sys.exit(1)
-
-        self.vc_entity = self.vc_code.entities[0]
-        self.vc_handle_t = self.vc_entity.generics[0].subtype_indication.type_mark
+        :returns: A VerificationComponentInterface object.
+        """
 
         try:
-            self.vci_facade = vc_lib.package(vci_name)
+            vci_facade = vc_lib.package(vci_name)
         except KeyError:
             LOGGER.error("Failed to find VCI %s", vci_name)
             sys.exit(1)
 
-        _, self.vc_constructor = self._validate_vci(
-            self.vci_facade.source_file.name, self.vc_handle_t
-        )
-
-        if not self.vc_constructor:
+        _, vc_constructor = cls.validate(vci_facade.source_file.name, vc_handle_t)
+        if not vc_constructor:
             sys.exit(1)
 
+        return cls(vci_facade, vc_constructor)
+
     @classmethod
-    def _validate_vc(cls, vc_source_file_name):
-        """Validates the existence and contents of the verification component."""
+    def validate(cls, vci_source_file_name, vc_handle_t):
+        """Validates the existence and contents of the verification component interface."""
 
-        with open(vc_source_file_name) as fptr:
-            vc_code = VHDLDesignFile.parse(fptr.read())
+        with open(vci_source_file_name) as fptr:
+            code = remove_comments(fptr.read())
+            vci_code = VHDLDesignFile.parse(code)
+            if len(vci_code.packages) != 1:
+                LOGGER.error(
+                    "%s must contain a single VCI package", vci_source_file_name
+                )
+                return None, None
 
-            if len(vc_code.entities) != 1:
-                LOGGER.error("%s must contain a single VC entity", vc_source_file_name)
-                return None
+            vc_constructor = cls._validate_constructor(code, vc_handle_t)
+            if not cls._validate_handle(code, vc_handle_t):
+                vc_constructor = None
 
-            vc_entity = vc_code.entities[0]
+            return vci_code.packages[0], vc_constructor
 
-            if not (
-                (len(vc_entity.generics) == 1)
-                and (len(vc_entity.generics[0].identifier_list) == 1)
-            ):
-                LOGGER.error("%s must have a single generic", vc_entity.identifier)
-                return None
-
-            return vc_code
+    def __init__(self, vci_facade, vc_constructor):
+        self.vci_facade = vci_facade
+        self.vc_constructor = vc_constructor
 
     @staticmethod
     def _validate_constructor(code, vc_handle_t):
@@ -216,101 +208,79 @@ class ComplianceTest(object):
         )
         return False
 
+
+class VerificationComponent:
+    """Represents a Verification Component (VC)."""
+
     @classmethod
-    def _validate_vci(cls, vci_source_file_name, vc_handle_t):
-        """Validates the existence and contents of the verification component interface."""
+    def find(cls, vc_lib, vc_name, vci):
+        """ Finds the specified VC if present.
 
-        with open(vci_source_file_name) as fptr:
-            code = remove_comments(fptr.read())
-            vci_code = VHDLDesignFile.parse(code)
-            if len(vci_code.packages) != 1:
-                LOGGER.error(
-                    "%s must contain a single VCI package", vci_source_file_name
-                )
-                return None, None
+        :param vc_lib: Library object containing the VC.
+        :param vc_name: Name of VC entity.
+        :param vci: A VerificationComponentInterface object representing the VCI used by the VC.
 
-            vc_constructor = cls._validate_constructor(code, vc_handle_t)
-            if not cls._validate_handle(code, vc_handle_t):
-                vc_constructor = None
-
-            return vci_code.packages[0], vc_constructor
-
-    def add_vhdl_testbench(self, vc_test_lib, test_dir, template_path=None):
+        :returns: A VerificationComponent object.
         """
-        Adds a VHDL compliance testbench
 
-        :param vc_test_lib: The name of the library to which the testbench is added.
-        :param test_dir: The name of the directory where the testbench file is stored.
-        :param template_path: Path to testbench template file. If None, a default template is used.
-
-        :returns: The :class:`.SourceFile` for the added testbench.
-
-        :example:
-
-        .. code-block:: python
-
-           root = dirname(__file__)
-           prj.add_vhdl_testbench("test_lib", join(root, "test"), join(root, ".vc", "vc_template.vhd")
-
-        """
+        if not vci:
+            LOGGER.error("No VCI provided")
+            sys.exit(1)
 
         try:
-            vc_test_lib.test_bench("tb_%s_compliance" % self.vc_entity.identifier)
-            raise RuntimeError(
-                "tb_%s_compliance already exists in %s"
-                % (self.vc_entity.identifier, vc_test_lib.name)
-            )
+            vc_facade = vc_lib.get_entity(vc_name)
         except KeyError:
-            pass
+            LOGGER.error("Failed to find VC %s", vc_name)
+            sys.exit(1)
 
-        if not exists(test_dir):
-            makedirs(test_dir)
+        vc_code = cls.validate(vc_facade.source_file.name)
+        if not vc_code:
+            sys.exit(1)
 
-        tb_path = join(test_dir, "tb_%s_compliance.vhd" % self.vc_entity.identifier)
-        with open(tb_path, "w") as fptr:
-            testbench_code = self.create_vhdl_testbench(template_path)
-            if not testbench_code:
+        vc_entity = vc_code.entities[0]
+        vc_handle_t = vc_entity.generics[0].subtype_indication.type_mark
+
+        if vc_handle_t != vci.vc_constructor.return_type_mark:
+            LOGGER.error(
+                "VC handle (%s) doesn't match that of the VCI (%s)",
+                vc_handle_t,
+                vci.vc_constructor.return_type_mark,
+            )
+            sys.exit(1)
+
+        return cls(vc_facade, vc_code, vc_entity, vc_handle_t, vci)
+
+    def __init__(self, vc_facade, vc_code, vc_entity, vc_handle_t, vci):
+        self.vc_facade = vc_facade
+        self.vc_code = vc_code
+        self.vc_entity = vc_entity
+        self.vc_handle_t = vc_handle_t
+        self.vci = vci
+
+    @staticmethod
+    def validate(vc_source_file_name):
+        """Validates the existence and contents of the verification component."""
+
+        with open(vc_source_file_name) as fptr:
+            vc_code = VHDLDesignFile.parse(fptr.read())
+
+            if len(vc_code.entities) != 1:
+                LOGGER.error("%s must contain a single VC entity", vc_source_file_name)
                 return None
-            fptr.write(testbench_code)
 
-        tb_file = vc_test_lib.add_source_file(tb_path)
-        testbench = vc_test_lib.test_bench(
-            "tb_%s_compliance" % self.vc_entity.identifier
-        )
-        test = testbench.test("Test that the actor can be customised")
-        test.set_generic("use_custom_actor", True)
+            vc_entity = vc_code.entities[0]
 
-        test = testbench.test("Test unexpected message handling")
-        test.add_config(
-            name="accept_unexpected_msg_type",
-            generics=dict(
-                fail_on_unexpected_msg_type=False,
-                use_custom_logger=True,
-                use_custom_actor=True,
-            ),
-        )
-        test.add_config(
-            name="fail_unexpected_msg_type_with_null_checker",
-            generics=dict(
-                fail_on_unexpected_msg_type=True,
-                use_custom_logger=True,
-                use_custom_actor=True,
-            ),
-        )
-        test.add_config(
-            name="fail_unexpected_msg_type_with_custom_checker",
-            generics=dict(
-                fail_on_unexpected_msg_type=True,
-                use_custom_logger=True,
-                use_custom_checker=True,
-                use_custom_actor=True,
-            ),
-        )
+            if not (
+                (len(vc_entity.generics) == 1)
+                and (len(vc_entity.generics[0].identifier_list) == 1)
+            ):
+                LOGGER.error("%s must have a single generic", vc_entity.identifier)
+                return None
 
-        return tb_file
+            return vc_code
 
-    @classmethod
-    def create_vhdl_testbench_template(cls, vc_lib_name, vc_path, vci_path):
+    @staticmethod
+    def create_vhdl_testbench_template(vc_lib_name, vc_path, vci_path):
         """
         Creates a template for a compliance testbench.
 
@@ -432,10 +402,12 @@ class ComplianceTest(object):
 
             return signal_declarations, vc_instantiation
 
-        vc_code = cls._validate_vc(vc_path)
+        vc_code = VerificationComponent.validate(vc_path)
         vc_entity = vc_code.entities[0]
         vc_handle_t = vc_entity.generics[0].subtype_indication.type_mark
-        vci_package, vc_constructor = cls._validate_vci(vci_path, vc_handle_t)
+        vci_package, vc_constructor = VerificationComponentInterface.validate(
+            vci_path, vc_handle_t
+        )
         if (not vci_package) or (not vc_constructor):
             return None, None
 
@@ -495,7 +467,7 @@ end architecture;
                 r"\bconstant\s+{vc_handle_name}\s*:\s*{vc_handle_t}\s*:=\s*{vc_constructor_name}".format(
                     vc_handle_name=self.vc_entity.generics[0].identifier_list[0],
                     vc_handle_t=self.vc_handle_t,
-                    vc_constructor_name=self.vc_constructor.identifier,
+                    vc_constructor_name=self.vci.vc_constructor.identifier,
                 ),
                 MULTILINE | IGNORECASE | DOTALL,
             )
@@ -504,7 +476,7 @@ end architecture;
             if not constructor_call_start:
                 raise RuntimeError(
                     "Failed to find call to %s in template_path %s"
-                    % (self.vc_constructor.identifier, template_path)
+                    % (self.vci.vc_constructor.identifier, template_path)
                 )
 
             parameter_start_re = re.compile(r"\s*\(", MULTILINE | IGNORECASE | DOTALL)
@@ -554,13 +526,13 @@ end architecture;
             if not constructor_call_end_match:
                 raise RuntimeError(
                     "Missing trailing semicolon for %s in template_path %s"
-                    % (self.vc_constructor.identifier, template_path)
+                    % (self.vci.vc_constructor.identifier, template_path)
                 )
 
             constructor_call_end = search_start + constructor_call_end_match.end()
 
             default_values = {}
-            for parameter in self.vc_constructor.parameter_list:
+            for parameter in self.vci.vc_constructor.parameter_list:
                 for identifier in parameter.identifier_list:
                     default_values[identifier] = parameter.init_value
 
@@ -599,7 +571,7 @@ constant custom_actor : actor_t := new_actor("vc", inbox_size => 1);
   constant unexpected_msg : msg_type_t := new_msg_type("unexpected msg");
 """.format(
                 vc_handle_t=self.vc_handle_t,
-                vc_constructor_name=self.vc_constructor.identifier,
+                vc_constructor_name=self.vci.vc_constructor.identifier,
                 specified_parameters=specified_parameters,
                 vc_handle_name=self.vc_entity.generics[0].identifier_list[0],
                 default_logger=default_values["logger"]
@@ -718,7 +690,7 @@ end process test_runner;""".format(
             template_code, _ = self.create_vhdl_testbench_template(
                 self.vc_facade.library,
                 self.vc_facade.source_file.name,
-                self.vci_facade.source_file.name,
+                self.vci.vci_facade.source_file.name,
             )
             if not template_code:
                 return None
@@ -740,12 +712,86 @@ end process test_runner;""".format(
 
         return remove_comments(tb_code)
 
+    def add_vhdl_testbench(self, vc_test_lib, test_dir, template_path=None):
+        """
+        Adds a VHDL compliance testbench
+
+        :param vc_test_lib: The name of the library to which the testbench is added.
+        :param test_dir: The name of the directory where the testbench file is stored.
+        :param template_path: Path to testbench template file. If None, a default template is used.
+
+        :returns: The :class:`.SourceFile` for the added testbench.
+
+        :example:
+
+        .. code-block:: python
+
+           root = dirname(__file__)
+           prj.add_vhdl_testbench("test_lib", join(root, "test"), join(root, ".vc", "vc_template.vhd")
+
+        """
+
+        try:
+            vc_test_lib.test_bench("tb_%s_compliance" % self.vc_entity.identifier)
+            raise RuntimeError(
+                "tb_%s_compliance already exists in %s"
+                % (self.vc_entity.identifier, vc_test_lib.name)
+            )
+        except KeyError:
+            pass
+
+        if not exists(test_dir):
+            makedirs(test_dir)
+
+        tb_path = join(test_dir, "tb_%s_compliance.vhd" % self.vc_entity.identifier)
+        with open(tb_path, "w") as fptr:
+            testbench_code = self.create_vhdl_testbench(template_path)
+            if not testbench_code:
+                return None
+            fptr.write(testbench_code)
+
+        tb_file = vc_test_lib.add_source_file(tb_path)
+        testbench = vc_test_lib.test_bench(
+            "tb_%s_compliance" % self.vc_entity.identifier
+        )
+        test = testbench.test("Test that the actor can be customised")
+        test.set_generic("use_custom_actor", True)
+
+        test = testbench.test("Test unexpected message handling")
+        test.add_config(
+            name="accept_unexpected_msg_type",
+            generics=dict(
+                fail_on_unexpected_msg_type=False,
+                use_custom_logger=True,
+                use_custom_actor=True,
+            ),
+        )
+        test.add_config(
+            name="fail_unexpected_msg_type_with_null_checker",
+            generics=dict(
+                fail_on_unexpected_msg_type=True,
+                use_custom_logger=True,
+                use_custom_actor=True,
+            ),
+        )
+        test.add_config(
+            name="fail_unexpected_msg_type_with_custom_checker",
+            generics=dict(
+                fail_on_unexpected_msg_type=True,
+                use_custom_logger=True,
+                use_custom_checker=True,
+                use_custom_actor=True,
+            ),
+        )
+
+        return tb_file
+
 
 def main():
     """Parses the command line arguments and acts accordingly."""
 
     def create_template(args):
-        template_code, vc_name = ComplianceTest.create_vhdl_testbench_template(
+        template_code, vc_name = VerificationComponent.create_vhdl_testbench_template(
             args.vc_lib_name, args.vc_path, args.vci_path
         )
         if not template_code or not vc_name:

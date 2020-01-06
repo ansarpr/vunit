@@ -33,7 +33,7 @@ begin
     variable reply_msg, msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, get_actor(uart.p_std_vc_cfg), msg);
+    receive(net, get_actor(uart.p_std_cfg), msg);
     msg_type := message_type(msg);
 
     handle_sync_message(net, msg_type, msg);
@@ -50,8 +50,8 @@ begin
       push_boolean(reply_msg, false);
       reply(net, msg, reply_msg);
 
-    elsif fail_on_unexpected_msg_type(uart.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(uart.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(uart.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(uart.p_std_cfg));
     end if;
 
   end process;

@@ -52,7 +52,7 @@ begin
     variable request_msg : msg_t;
     variable msg_type    : msg_type_t;
   begin
-    receive(net, get_actor(wishbone_slave.p_std_vc_cfg), request_msg);
+    receive(net, get_actor(wishbone_slave.p_std_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     if msg_type = wait_for_time_msg or msg_type = wait_until_idle_msg then
@@ -60,8 +60,8 @@ begin
         wait until rising_edge(clk);
       end loop;
       handle_sync_message(net, msg_type, request_msg);
-    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_cfg));
     end if;
   end process;
 
@@ -120,8 +120,8 @@ begin
       wait until rising_edge(clk);
       ack <= '0';
 
-    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(wishbone_slave.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(wishbone_slave.p_std_cfg));
     end if;
   end process;
 

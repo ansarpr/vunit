@@ -166,22 +166,22 @@ package body axi_slave_private_pkg is
 
     impure function get_actor return actor_t is
     begin
-      return get_actor(p_axi_slave.p_std_vc_cfg);
+      return get_actor(p_axi_slave.p_std_cfg);
     end;
 
     impure function get_logger return logger_t is
     begin
-      return get_logger(p_axi_slave.p_std_vc_cfg);
+      return get_logger(p_axi_slave.p_std_cfg);
     end;
 
     impure function get_checker return checker_t is
     begin
-      return get_checker(p_axi_slave.p_std_vc_cfg);
+      return get_checker(p_axi_slave.p_std_cfg);
     end;
 
     impure function fail_on_unexpected_msg_type return boolean is
     begin
-      return fail_on_unexpected_msg_type(p_axi_slave.p_std_vc_cfg);
+      return fail_on_unexpected_msg_type(p_axi_slave.p_std_cfg);
     end;
 
     procedure set_address_fifo_depth(depth : positive) is

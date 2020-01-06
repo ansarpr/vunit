@@ -41,7 +41,7 @@ architecture a of axi_stream_protocol_checker is
     variable checkers : checker_vec_t(1 to n_rules);
   begin
     for rule in 1 to n_rules loop
-      checkers(rule) := new_checker(get_name(get_logger(protocol_checker.p_std_vc_cfg)) & ":rule " & to_string(rule));
+      checkers(rule) := new_checker(get_name(get_logger(protocol_checker.p_std_cfg)) & ":rule " & to_string(rule));
     end loop;
 
     return checkers;
@@ -90,7 +90,7 @@ begin
       end loop;
     end;
   begin
-    receive(net, get_actor(protocol_checker.p_std_vc_cfg), request_msg);
+    receive(net, get_actor(protocol_checker.p_std_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     handle_wait_for_time(net, msg_type, request_msg);
@@ -98,8 +98,8 @@ begin
     if msg_type = wait_until_idle_msg then
       wait_until_all_streams_have_completed;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif fail_on_unexpected_msg_type(protocol_checker.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(protocol_checker.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(protocol_checker.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(protocol_checker.p_std_cfg));
     end if;
   end process;
 

@@ -24,14 +24,14 @@ begin
     variable msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, actor_vec_t'(vc_not_supporting_custom_actor_actor, get_actor(vc_h.p_std_vc_cfg)), msg);
+    receive(net, actor_vec_t'(vc_not_supporting_custom_actor_actor, get_actor(vc_h.p_std_cfg)), msg);
 
     msg_type := message_type(msg);
 
     handle_sync_message(net, msg_type, msg);
 
-    if fail_on_unexpected_msg_type(vc_h.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(vc_h.p_std_vc_cfg));
+    if fail_on_unexpected_msg_type(vc_h.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(vc_h.p_std_cfg));
     end if;
   end process;
 end architecture;

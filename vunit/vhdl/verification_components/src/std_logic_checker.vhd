@@ -30,7 +30,7 @@ begin
     variable request_msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net, get_actor(signal_checker.p_std_vc_cfg), request_msg);
+    receive(net, get_actor(signal_checker.p_std_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     if msg_type = expect_msg then
@@ -49,8 +49,8 @@ begin
       end loop;
 
       handle_sync_message(net, msg_type, request_msg);
-    elsif fail_on_unexpected_msg_type(signal_checker.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(signal_checker.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(signal_checker.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(signal_checker.p_std_cfg));
     end if;
 
     delete(request_msg);
@@ -71,22 +71,22 @@ begin
   begin
     wait on value;
     if is_empty(expect_queue) then
-      error(get_logger(signal_checker.p_std_vc_cfg), "Unexpected event with value = " & to_string(value));
+      error(get_logger(signal_checker.p_std_cfg), "Unexpected event with value = " & to_string(value));
     else
       expected_value := pop_std_ulogic_vector(expect_queue);
       event_time := pop_time(expect_queue);
       margin := pop_time(expect_queue);
 
       if value /= expected_value then
-        error(get_logger(signal_checker.p_std_vc_cfg), "Got event with wrong value, got " & to_string(value) &
+        error(get_logger(signal_checker.p_std_cfg), "Got event with wrong value, got " & to_string(value) &
               " expected " & to_string(expected_value));
 
       elsif now < event_time - margin or now > event_time + margin then
-        error(get_logger(signal_checker.p_std_vc_cfg), "Got event at wrong time, occured at " & time'image(now) &
+        error(get_logger(signal_checker.p_std_cfg), "Got event at wrong time, occured at " & time'image(now) &
               " expected at " & time'image(event_time) & margin_suffix);
 
       else
-        pass(get_logger(signal_checker.p_std_vc_cfg), "Got expected event with value = " & to_string(value));
+        pass(get_logger(signal_checker.p_std_cfg), "Got expected event with value = " & to_string(value));
       end if;
     end if;
   end process;

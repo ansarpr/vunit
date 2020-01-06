@@ -23,17 +23,17 @@ package body bus_master_pkg is
                           actor                       : actor_t   := null_actor;
                           checker                     : checker_t := null_checker;
                           fail_on_unexpected_msg_type : boolean   := true) return bus_master_t is
-    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+    constant p_std_cfg : std_cfg_t := create_std_cfg(
       bus_logger, bus_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
   begin
-    return (p_actor => get_actor(p_std_vc_cfg),
+    return (p_actor => get_actor(p_std_cfg),
             p_data_length => data_length,
             p_address_length => address_length,
             p_byte_length => byte_length,
-            p_logger => get_logger(p_std_vc_cfg),
-            p_checker => get_checker(p_std_vc_cfg),
-            p_fail_on_unexpected_msg_type => work.vc_pkg.fail_on_unexpected_msg_type(p_std_vc_cfg));
+            p_logger => get_logger(p_std_cfg),
+            p_checker => get_checker(p_std_cfg),
+            p_fail_on_unexpected_msg_type => work.vc_pkg.fail_on_unexpected_msg_type(p_std_cfg));
   end;
 
   function get_actor(bus_handle : bus_master_t) return actor_t is

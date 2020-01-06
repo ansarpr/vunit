@@ -5,7 +5,7 @@
 # Copyright (c) 2014-2019, Lars Asplund lars.anders.asplund@gmail.com
 
 from os.path import join, dirname
-from vunit import VUnit, ComplianceTest
+from vunit import VUnit, VerificationComponentInterface, VerificationComponent
 
 root = dirname(__file__)
 
@@ -95,27 +95,56 @@ lib.entity("tb_other_file_tests").scan_tests_from_file(
 )
 
 test_lib = ui.add_library("test_lib")
-ComplianceTest(lib, "vc", "vc_pkg").add_vhdl_testbench(
-    test_lib, join(root, "compliance_test")
+
+vci = VerificationComponentInterface.find(lib, "vc_pkg", "vc_handle_t")
+VerificationComponent.find(lib, "vc", vci).add_vhdl_testbench(
+    test_lib, join(root, "compliance_test"),
 )
-ComplianceTest(lib, "vc_with_template", "vc_pkg_with_template").add_vhdl_testbench(
+
+vci = VerificationComponentInterface.find(lib, "vc_pkg_with_template", "vc_handle_t")
+VerificationComponent.find(lib, "vc_with_template", vci).add_vhdl_testbench(
     test_lib,
     join(root, "compliance_test"),
     join(root, ".vc", "tb_vc_with_template_compliance_template.vhd"),
 )
-ComplianceTest(
-    lib, "vc_not_supporting_sync", "vc_not_supporting_sync_pkg"
-).add_vhdl_testbench(test_lib, join(root, "compliance_test"))
-ComplianceTest(
-    lib, "vc_not_supporting_custom_actor", "vc_not_supporting_custom_actor_pkg"
-).add_vhdl_testbench(test_lib, join(root, "compliance_test"))
-ComplianceTest(
-    lib, "vc_not_supporting_custom_logger", "vc_not_supporting_custom_logger_pkg"
-).add_vhdl_testbench(test_lib, join(root, "compliance_test"))
-ComplianceTest(
+
+
+vci = VerificationComponentInterface.find(
+    lib, "vc_not_supporting_sync_pkg", "vc_not_supporting_sync_handle_t"
+)
+VerificationComponent.find(lib, "vc_not_supporting_sync", vci).add_vhdl_testbench(
+    test_lib, join(root, "compliance_test"),
+)
+
+vci = VerificationComponentInterface.find(
+    lib, "vc_not_supporting_custom_actor_pkg", "vc_not_supporting_custom_actor_handle_t"
+)
+VerificationComponent.find(
+    lib, "vc_not_supporting_custom_actor", vci
+).add_vhdl_testbench(
+    test_lib, join(root, "compliance_test"),
+)
+
+vci = VerificationComponentInterface.find(
     lib,
-    "vc_not_supporting_unexpected_msg_handling",
+    "vc_not_supporting_custom_logger_pkg",
+    "vc_not_supporting_custom_logger_handle_t",
+)
+VerificationComponent.find(
+    lib, "vc_not_supporting_custom_logger", vci
+).add_vhdl_testbench(
+    test_lib, join(root, "compliance_test"),
+)
+
+vci = VerificationComponentInterface.find(
+    lib,
     "vc_not_supporting_unexpected_msg_handling_pkg",
-).add_vhdl_testbench(test_lib, join(root, "compliance_test"))
+    "vc_not_supporting_unexpected_msg_handling_handle_t",
+)
+VerificationComponent.find(
+    lib, "vc_not_supporting_unexpected_msg_handling", vci
+).add_vhdl_testbench(
+    test_lib, join(root, "compliance_test"),
+)
 
 ui.main()

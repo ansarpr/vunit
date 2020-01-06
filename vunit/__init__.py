@@ -14,7 +14,10 @@ from vunit.ui import VUnit
 from vunit.vunit_cli import VUnitCLI
 from vunit.about import version, doc
 from vunit.json4vhdl import read_json, encode_json
-from vunit.vc.compliance_test import ComplianceTest
+from vunit.vc.compliance_test import (
+    VerificationComponentInterface,
+    VerificationComponent,
+)
 
 # Repository root
 ROOT = abspath(join(dirname(__file__), ".."))

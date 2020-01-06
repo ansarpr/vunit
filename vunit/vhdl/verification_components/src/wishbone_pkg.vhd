@@ -23,7 +23,7 @@ package wishbone_pkg is
 
   type wishbone_slave_t is record
     -- Private
-    p_std_vc_cfg             : std_vc_cfg_t;
+    p_std_cfg             : std_cfg_t;
     p_ack_high_probability   : real range 0.0 to 1.0;
     p_stall_high_probability : real range 0.0 to 1.0;
     p_ack_actor              : actor_t;
@@ -184,12 +184,12 @@ package body wishbone_pkg is
     checker                     : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean   := true
   ) return wishbone_slave_t is
-    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+    constant p_std_cfg : std_cfg_t := create_std_cfg(
       wishbone_logger, wishbone_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
 
   begin
-    return (p_std_vc_cfg => p_std_vc_cfg,
+    return (p_std_cfg => p_std_cfg,
             p_ack_actor => new_actor,
             p_memory => to_vc_interface(memory, logger),
             p_ack_high_probability => ack_high_probability,
@@ -209,7 +209,7 @@ package body wishbone_pkg is
 
   impure function as_sync(slave : wishbone_slave_t) return sync_handle_t is
   begin
-    return get_actor(slave.p_std_vc_cfg);
+    return get_actor(slave.p_std_cfg);
   end;
 
   function get_actor(wishbone_master : wishbone_master_t) return actor_t is

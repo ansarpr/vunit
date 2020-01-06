@@ -16,7 +16,7 @@ use work.vc_pkg.all;
 package signal_checker_pkg is
   type signal_checker_t is record
     -- Private
-    p_std_vc_cfg : std_vc_cfg_t;
+    p_std_cfg : std_cfg_t;
   end record;
 
   constant signal_checker_logger : logger_t := get_logger("vunit_lib:signal_checker_pkg");
@@ -56,12 +56,12 @@ package body signal_checker_pkg is
     checker                     : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean   := true)
     return signal_checker_t is
-    constant p_std_vc_cfg : std_vc_cfg_t := create_std_vc_cfg(
+    constant p_std_cfg : std_cfg_t := create_std_cfg(
       signal_checker_logger, signal_checker_checker, actor, logger, checker, fail_on_unexpected_msg_type
     );
 
   begin
-    return (p_std_vc_cfg => p_std_vc_cfg);
+    return (p_std_cfg => p_std_cfg);
   end;
 
   procedure expect(signal net : inout network_t;
@@ -74,18 +74,18 @@ package body signal_checker_pkg is
     push_std_ulogic_vector(request_msg, value);
     push_time(request_msg, event_time);
     push_time(request_msg, margin);
-    send(net, get_actor(signal_checker.p_std_vc_cfg), request_msg);
+    send(net, get_actor(signal_checker.p_std_cfg), request_msg);
   end;
 
   procedure wait_until_idle(signal net : inout network_t;
                             signal_checker : signal_checker_t) is
   begin
-    wait_until_idle(net, get_actor(signal_checker.p_std_vc_cfg));
+    wait_until_idle(net, get_actor(signal_checker.p_std_cfg));
   end;
 
   impure function as_sync(signal_checker : signal_checker_t) return sync_handle_t is
   begin
-    return get_actor(signal_checker.p_std_vc_cfg);
+    return get_actor(signal_checker.p_std_cfg);
   end;
 
 

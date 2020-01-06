@@ -36,7 +36,7 @@ begin
     variable request_msg : msg_t;
     variable msg_type : msg_type_t;
   begin
-    receive(net,get_actor(monitor.p_std_vc_cfg), request_msg);
+    receive(net,get_actor(monitor.p_std_cfg), request_msg);
     msg_type := message_type(request_msg);
 
     handle_wait_for_time(net, msg_type, request_msg);
@@ -46,8 +46,8 @@ begin
           wait_until_idle(net, as_sync(monitor.p_protocol_checker));
       end if;
       handle_wait_until_idle(net, msg_type, request_msg);
-    elsif fail_on_unexpected_msg_type(monitor.p_std_vc_cfg) then
-      unexpected_msg_type(msg_type, get_checker(monitor.p_std_vc_cfg));
+    elsif fail_on_unexpected_msg_type(monitor.p_std_cfg) then
+      unexpected_msg_type(msg_type, get_checker(monitor.p_std_cfg));
     end if;
   end process;
 
@@ -64,8 +64,8 @@ begin
   begin
     wait until (tvalid and tready) = '1' and rising_edge(aclk);
 
-    if is_visible(get_logger(monitor.p_std_vc_cfg), debug) then
-      debug(get_logger(monitor.p_std_vc_cfg), "tdata: " & to_nibble_string(tdata) & " (" & to_integer_string(tdata) & ")" & ", tlast: " & to_string(tlast));
+    if is_visible(get_logger(monitor.p_std_cfg), debug) then
+      debug(get_logger(monitor.p_std_cfg), "tdata: " & to_nibble_string(tdata) & " (" & to_integer_string(tdata) & ")" & ", tlast: " & to_string(tlast));
     end if;
 
     axi_stream_transaction := (
@@ -79,7 +79,7 @@ begin
     );
 
     msg := new_axi_stream_transaction_msg(axi_stream_transaction);
-    publish(net, get_actor(monitor.p_std_vc_cfg), msg);
+    publish(net, get_actor(monitor.p_std_cfg), msg);
   end process;
 
   axi_stream_protocol_checker_generate : if monitor.p_protocol_checker /= null_axi_stream_protocol_checker generate

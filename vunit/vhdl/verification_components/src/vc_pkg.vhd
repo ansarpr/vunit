@@ -10,14 +10,14 @@ context work.vunit_context;
 context work.com_context;
 
 package vc_pkg is
-  type std_vc_cfg_t is record
+  type std_cfg_t is record
     actor                       : actor_t;
     logger                      : logger_t;
     checker                     : checker_t;
     fail_on_unexpected_msg_type : boolean;
   end record;
 
-  constant null_std_vc_cfg : std_vc_cfg_t := (actor => null_actor, logger => null_logger, checker => null_checker, fail_on_unexpected_msg_type => false);
+  constant null_std_cfg : std_cfg_t := (actor => null_actor, logger => null_logger, checker => null_checker, fail_on_unexpected_msg_type => false);
 
   -- Creates a standard VC configuration with an actor, a logger, a checker, and the policy for handling unexpected messages
   --
@@ -26,20 +26,20 @@ package vc_pkg is
   -- * The checker is the checker provided by the checker parameter unless it's the null_checker. In that case the the default checker is used if the logger is the
   --   default logger. Otherwise a new checker is created based on the provided logger. The default checker must not be the null_checker
   -- * The policy for handling unexpected messages is according to the fail_on_unexpected_msg_type parameter.
-  impure function create_std_vc_cfg(
+  impure function create_std_cfg(
     default_logger              : logger_t;
     default_checker             : checker_t;
     actor                       : actor_t := null_actor;
     logger                      : logger_t := null_logger;
     checker                     : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean := true
-  ) return std_vc_cfg_t;
+  ) return std_cfg_t;
 
   -- These functions extracts the different parts of a standard VC configuration
-  function get_actor(std_vc_cfg : std_vc_cfg_t) return actor_t;
-  function get_logger(std_vc_cfg : std_vc_cfg_t) return logger_t;
-  function get_checker(std_vc_cfg : std_vc_cfg_t) return checker_t;
-  function fail_on_unexpected_msg_type(std_vc_cfg : std_vc_cfg_t) return boolean;
+  function get_actor(std_cfg : std_cfg_t) return actor_t;
+  function get_logger(std_cfg : std_cfg_t) return logger_t;
+  function get_checker(std_cfg : std_cfg_t) return checker_t;
+  function fail_on_unexpected_msg_type(std_cfg : std_cfg_t) return boolean;
 
 end package;
 
@@ -47,15 +47,15 @@ package body vc_pkg is
   constant vc_logger : logger_t := get_logger("vunit_lib:vc_pkg");
   constant vc_checker : checker_t := new_checker(vc_logger);
 
-  impure function create_std_vc_cfg(
+  impure function create_std_cfg(
     default_logger              : logger_t;
     default_checker             : checker_t;
     actor                       : actor_t := null_actor;
     logger                      : logger_t := null_logger;
     checker                     : checker_t := null_checker;
     fail_on_unexpected_msg_type : boolean := true
-  ) return std_vc_cfg_t is
-    variable result : std_vc_cfg_t;
+  ) return std_cfg_t is
+    variable result : std_cfg_t;
   begin
     check(vc_checker, default_logger /= null_logger, "A default logger must be provided");
     check(vc_checker, default_checker /= null_checker, "A default checker must be provided");
@@ -77,24 +77,24 @@ package body vc_pkg is
     return result;
   end;
 
-  function get_actor(std_vc_cfg : std_vc_cfg_t) return actor_t is
+  function get_actor(std_cfg : std_cfg_t) return actor_t is
   begin
-    return std_vc_cfg.actor;
+    return std_cfg.actor;
   end;
 
-  function get_logger(std_vc_cfg : std_vc_cfg_t) return logger_t is
+  function get_logger(std_cfg : std_cfg_t) return logger_t is
   begin
-    return std_vc_cfg.logger;
+    return std_cfg.logger;
   end;
 
-  function get_checker(std_vc_cfg : std_vc_cfg_t) return checker_t is
+  function get_checker(std_cfg : std_cfg_t) return checker_t is
   begin
-    return std_vc_cfg.checker;
+    return std_cfg.checker;
   end;
 
-  function fail_on_unexpected_msg_type(std_vc_cfg : std_vc_cfg_t) return boolean is
+  function fail_on_unexpected_msg_type(std_cfg : std_cfg_t) return boolean is
   begin
-    return std_vc_cfg.fail_on_unexpected_msg_type;
+    return std_cfg.fail_on_unexpected_msg_type;
   end;
 
 end package body;
