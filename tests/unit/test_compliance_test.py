@@ -14,8 +14,12 @@ from os import makedirs
 from itertools import product
 import re
 from vunit.ostools import renew_path
-from vunit import VerificationComponentInterface, VerificationComponent
-from vunit.vc.compliance_test import main, LOGGER, VerificationComponent
+from vunit.vc.verification_component_interface import (
+    VerificationComponentInterface,
+    LOGGER,
+)
+from vunit.vc.verification_component import VerificationComponent
+from vunit.vc.compliance_test import main
 from vunit import VUnit
 from vunit.vhdl_parser import VHDLDesignFile, VHDLReference
 
@@ -79,7 +83,7 @@ end package;
             outfile.write(contents)
         return full_file_name
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_not_finding_vc(self, error_mock):
         vci = VerificationComponentInterface.find(self.vc_lib, "vc_pkg", "vc_handle_t")
         self.assertRaises(
@@ -87,7 +91,7 @@ end package;
         )
         error_mock.assert_called_once_with("Failed to find VC %s", "other_vc")
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_not_finding_vci(self, error_mock):
         self.assertRaises(
             SystemExit,
@@ -98,7 +102,7 @@ end package;
         )
         error_mock.assert_called_once_with("Failed to find VCI %s", "other_vc_pkg")
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_on_multiple_entities(self, error_mock):
         vc_contents = """
 entity vc1 is
@@ -128,7 +132,7 @@ end entity;
             "%s must contain a single VC entity", join(self.tmp_dir, "vc1_2.vhd")
         )
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_on_multiple_package(self, error_mock):
         vci_contents = """
 package vc_pkg1 is
@@ -161,7 +165,7 @@ end package;
             "%s must contain a single VCI package", join(self.tmp_dir, "vci1_2.vhd")
         )
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_evaluating_vc_generics(self, error_mock):
         vc1_contents = """
 entity vc1 is
@@ -204,7 +208,7 @@ end entity;
         )
         error_mock.assert_called_with("%s must have a single generic", "vc3")
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_with_no_constructor(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
@@ -230,7 +234,7 @@ end package;
             "Failed to find a constructor function for vc_handle_t starting with new_"
         )
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_with_wrong_constructor_return_type(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
@@ -256,7 +260,7 @@ end package;
             "Found constructor function new_vc but not with the correct return type vc_handle_t"
         )
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_on_incorrect_constructor_parameters(self, error_mock):
         parameters = dict(
             logger=("logger_t", "default_logger"),
@@ -346,7 +350,7 @@ end package;
             )
             error_mock.assert_called_with(error_msg)
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_on_non_private_handle_elements(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
@@ -379,7 +383,7 @@ end package;
             "%s in %s doesn't start with p_", "foo", "vc_handle_t"
         )
 
-    @mock.patch("vunit.vc.compliance_test.LOGGER.error")
+    @mock.patch("vunit.vc.verification_component_interface.LOGGER.error")
     def test_failing_on_missing_handle_record(self, error_mock):
         vci_contents = """\
 package other_vc_pkg is
@@ -608,7 +612,7 @@ end architecture;
 
     def test_creating_template_without_output_path(self):
         with mock.patch(
-            "sys.argv", ["compliance_test.py", "create", self.vc_path, self.vci_path]
+            "sys.argv", ["compliance_test.py", "create-vc", self.vc_path, self.vci_path]
         ):
             main()
 
@@ -625,7 +629,7 @@ end architecture;
             "sys.argv",
             [
                 "compliance_test.py",
-                "create",
+                "create-vc",
                 "-o",
                 output_dir,
                 self.vc_path,
@@ -643,7 +647,7 @@ end architecture;
             "sys.argv",
             [
                 "compliance_test.py",
-                "create",
+                "create-vc",
                 "--output-path",
                 output_path,
                 self.vc_path,
@@ -660,7 +664,7 @@ end architecture;
             "sys.argv",
             [
                 "compliance_test.py",
-                "create",
+                "create-vc",
                 "--output-path",
                 output_path,
                 self.vc_path,
@@ -671,7 +675,7 @@ end architecture;
 
     def test_creating_template_with_default_vc_lib(self):
         with mock.patch(
-            "sys.argv", ["compliance_test.py", "create", self.vc_path, self.vci_path]
+            "sys.argv", ["compliance_test.py", "create-vc", self.vc_path, self.vci_path]
         ):
             main()
             with open(
@@ -690,7 +694,7 @@ end architecture;
             "sys.argv",
             [
                 "compliance_test.py",
-                "create",
+                "create-vc",
                 "-l",
                 "my_vc_lib",
                 self.vc_path,
